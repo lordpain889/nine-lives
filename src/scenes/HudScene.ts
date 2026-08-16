@@ -64,6 +64,7 @@ export class HudScene extends Phaser.Scene {
     const bossActive = (r.get('bossActive') as boolean) ?? false;
     this.bossName.setVisible(bossActive);
     if (bossActive) {
+      setUiText(this.bossName, (r.get('bossName') as string) ?? BOSS.nameRu);
       const bHp = (r.get('bossHp') as number) ?? 0;
       const bMax = (r.get('bossMaxHp') as number) ?? 1;
       const w = 160;

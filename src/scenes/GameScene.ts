@@ -22,6 +22,7 @@ import { rollDrops } from '../systems/loot';
 import { newSave, persist, setFlag, hasFlag } from '../systems/save';
 import { addItem } from '../config/items';
 import { SpiritEnemy } from '../entities/SpiritEnemy';
+import { Cardinal } from '../entities/Cardinal';
 import {
   availableQuest,
   pendingQuest,
@@ -50,6 +51,8 @@ export class GameScene extends Phaser.Scene {
   private zone!: ZoneDef;
   private enemies!: Phaser.GameObjects.Group;
   private boss: MiniBoss | null = null;
+  private cardinal: Cardinal | null = null;
+  private spikes: Array<{ sprite: Phaser.GameObjects.Sprite; phase: number }> = [];
   private shrines: Shrine[] = [];
   private shrineIds: string[] = [];
   private npcs: Npc[] = [];
@@ -118,6 +121,8 @@ export class GameScene extends Phaser.Scene {
     this.transitioning = false;
     this.soulDrop = null;
     this.boss = null;
+    this.cardinal = null;
+    this.spikes = [];
 
     // ── алтари и NPC ──
     const shrineSpawns = this.zone.spawns.filter((s) => s.type === 'shrine');
@@ -319,25 +324,62 @@ export class GameScene extends Phaser.Scene {
       zone.setData('radius', e.radius);
       this.cameras.main.shake(180, 0.012);
     });
-    this.events.on('boss-defeated', () => {
-      setFlag(this.save, 'warden_dead');
-      addItem(this.save.inventory, 'warden_heart');
-      this.events.emit('float-text', {
-        x: this.player.x,
-        y: this.player.y - 16,
-        text: '+сердце стража',
-        tint: UI.blood,
-      });
-      this.persistNow();
-      this.onBossDefeated();
+    this.events.on('boss-defeated', (e: { boss: string }) => {
+      if (e.boss === 'warden') {
+        setFlag(this.save, 'warden_dead');
+        addItem(this.save.inventory, 'warden_heart');
+        this.events.emit('float-text', {
+          x: this.player.x,
+          y: this.player.y - 16,
+          text: '+сердце стража',
+          tint: UI.blood,
+        });
+        this.persistNow();
+        this.onBossDefeated();
+      } else {
+        setFlag(this.save, 'cardinal_dead');
+        addItem(this.save.inventory, 'cardinal_relic');
+        this.persistNow();
+        this.onCardinalDefeated();
+      }
     });
+
+    // ── атаки Кардинала ──
+    this.events.on(
+      'cardinal-bolt',
+      (e: { x: number; y: number; vx: number; vy: number; damage: number }) => {
+        const proj = this.physics.add.sprite(e.x, e.y, 'enemies');
+        this.enemyProjectiles.add(proj);
+        proj.setData('damage', e.damage);
+        proj.play('bolt');
+        (proj.body as Phaser.Physics.Arcade.Body).setSize(8, 8);
+        proj.setVelocity(e.vx, e.vy);
+        proj.setDepth(proj.y + 8);
+        this.time.delayedCall(2200, () => {
+          if (proj.active) proj.destroy();
+        });
+      },
+    );
+    this.events.on('cardinal-summon', (e: { x: number; y: number }) => {
+      const rat = new Enemy(this, e.x, e.y, ENEMIES.rat);
+      rat.enemyState = 'aggro';
+      this.enemies.add(rat);
+      this.atmosphere.shrineBurst(e.x, e.y);
+    });
+    this.events.on(
+      'cardinal-beam-seg',
+      (e: { x: number; y: number; damage: number; radius: number }) => {
+        const zone = spawnMeleeHitbox(this, this.enemyHitboxes, e.x, e.y, e.radius * 2, e.radius * 2, e.damage, 260);
+        zone.setData('radius', e.radius);
+      },
+    );
 
     // scene.restart() НЕ снимает слушателей — без этого они копятся
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const ev of [
         'player-melee', 'player-cast', 'enemy-melee', 'enemy-cast', 'enemy-lob', 'enemy-died',
         'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated', 'float-text', 'loot-picked',
-        'pack-aggro',
+        'pack-aggro', 'cardinal-bolt', 'cardinal-summon', 'cardinal-beam-seg',
       ]) {
         this.events.off(ev);
       }
@@ -420,6 +462,7 @@ export class GameScene extends Phaser.Scene {
   private spawnEnemies(): void {
     this.enemies.clear(true, true);
     this.boss = null;
+    this.cardinal = null;
     for (const s of this.zone.spawns) {
       if (s.type === 'spirit') {
         this.enemies.add(new SpiritEnemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES.spirit));
@@ -429,6 +472,18 @@ export class GameScene extends Phaser.Scene {
         this.boss = new MiniBoss(this, s.x * 16 + 8, s.y * 16 + 8);
         this.enemies.add(this.boss);
         this.registry.set('bossActive', false);
+      } else if (s.type === 'cardinal' && !hasFlag(this.save, 'cardinal_dead')) {
+        this.cardinal = new Cardinal(this, s.x * 16 + 8, s.y * 16 + 8);
+        this.enemies.add(this.cardinal);
+        this.registry.set('bossActive', false);
+      }
+    }
+    // шипы-ловушки (не враги, не респавнятся — статичны по зоне)
+    if (!this.spikes.length) {
+      for (const s of this.zone.spawns) {
+        if (s.type !== 'spikes') continue;
+        const sprite = this.add.sprite(s.x * 16 + 8, s.y * 16 + 8, 'tiles', 33).setDepth(2);
+        this.spikes.push({ sprite, phase: ((s.x * 7 + s.y * 13) % 6) * 400 });
       }
     }
   }
@@ -689,6 +744,37 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ── финал: Кардинал повержен ──
+  private onCardinalDefeated(): void {
+    this.time.delayedCall(1500, () => {
+      const overlay = this.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0d0a14, 0)
+        .setScrollFactor(0)
+        .setDepth(9999);
+      this.tweens.add({ targets: overlay, fillAlpha: 0.85, duration: 1200 });
+
+      const mk = (y: number, msg: string, tint: number, scale = 1) =>
+        uiText(this, GAME_WIDTH / 2, y, msg, tint, scale)
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(10000)
+          .setAlpha(0);
+
+      const st = this.save.stats;
+      const t1 = mk(52, STRINGS.victory, UI.gold, 2);
+      const t2 = mk(76, STRINGS.victorySub, UI.fog);
+      const t3 = mk(96, `убийств: ${st.kills}   смертей: ${st.deaths}`, UI.bone);
+      const t4 = mk(110, `${STRINGS.souls}: ${(this.registry.get('souls') as number) ?? 0}`, UI.cyan);
+      const t5 = mk(140, STRINGS.backToTitle, UI.bone);
+      this.tweens.add({ targets: [t1, t2, t3, t4, t5], alpha: 1, duration: 1000, delay: 600 });
+
+      this.input.keyboard!.once('keydown-ENTER', () => {
+        this.scene.stop('hud');
+        this.scene.start('title');
+      });
+    });
+  }
+
   private showBanner(msg: string, tint: number): void {
     const banner = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT - 30, msg, tint)
       .setOrigin(0.5)
@@ -713,6 +799,24 @@ export class GameScene extends Phaser.Scene {
       this.player.x < 40 * 16
     ) {
       this.boss.activate();
+    }
+
+    // Кардинал просыпается, когда игрок входит в неф собора
+    if (this.cardinal && this.cardinal.bossState === 'dormant' && this.player.y < 19 * 16) {
+      this.cardinal.activate();
+    }
+
+    // шипы: цикл 2.4с (1с подняты), урон когда подняты
+    for (const spike of this.spikes) {
+      const up = (time + spike.phase) % 2400 < 1000;
+      spike.sprite.setFrame(up ? 34 : 33);
+      if (
+        up &&
+        this.player.state !== 'dead' &&
+        Phaser.Math.Distance.Between(spike.sprite.x, spike.sprite.y, this.player.x, this.player.y) < 11
+      ) {
+        this.player.takeHit(12, spike.sprite.x, spike.sprite.y + 6);
+      }
     }
 
     // маркеры квестов над NPC

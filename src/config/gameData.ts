@@ -70,6 +70,7 @@ export const ENEMY_FRAMES = {
   doctor: { idle: [32, 33], walk: [34, 35], windup: [36, 37], attack: [38], death: [39, 40] },
   wolf: { idle: [45, 46], walk: [47, 48], windup: [49, 50], attack: [51, 52], death: [53] },
   spirit: { idle: [54, 55], walk: [56, 57], windup: [58, 59], attack: [60], death: [61, 62] },
+  skeleton: { idle: [63, 64], walk: [65, 66], windup: [67, 68], attack: [69, 70], death: [71] },
   fish: [19, 20],
   bolt: [21, 22],
   flask: [41, 42],
@@ -106,6 +107,26 @@ export const BOSS_FRAMES = {
   slam: [10, 11],
   death: [12, 13, 14],
 } as const;
+
+export const CARDINAL_FRAMES = {
+  idle: [15, 16],
+  windup: [17, 18],
+  cast: [19],
+  summon: [20, 21],
+  death: [22, 23, 24],
+} as const;
+
+export const CARDINAL = {
+  nameRu: 'КАРДИНАЛ ЧУМНОГО СОБОРА',
+  hp: 380,
+  fan: { damage: 16, count: 3, spreadDeg: 22, speed: 110, windupMs: 700 },
+  beam: { damage: 30, windupMs: 950, segments: 7, radius: 11 },
+  summonCap: 4,
+  teleportCooldownMs: 5200,
+  actionGapMs: 1000,
+  phase2At: 0.5,
+  soulValue: 800,
+};
 
 export const BOSS = {
   nameRu: 'СТРАЖ КЛАДБИЩА',
@@ -182,6 +203,27 @@ export const FOREST_TILES = {
 } as const;
 
 export const FOREST_COLLIDING = [FOREST_TILES.denseTree, FOREST_TILES.stump];
+
+// катакомбы и собор (29+)
+export const CRYPT_TILES = {
+  stoneA: 29,
+  stoneB: 30,
+  brick: 31,
+  bonePile: 32,
+  spikesDown: 33,
+  spikesUp: 34,
+  checkerA: 35,
+  checkerB: 36,
+  pillar: 37,
+  stained: 38,
+} as const;
+
+export const CRYPT_COLLIDING = [
+  CRYPT_TILES.brick,
+  CRYPT_TILES.bonePile,
+  CRYPT_TILES.pillar,
+  CRYPT_TILES.stained,
+];
 
 // ─── Враги ────────────────────────────────────────────────────────────────
 export const ENEMIES: Record<string, EnemyDef> = {
@@ -274,6 +316,23 @@ export const ENEMIES: Record<string, EnemyDef> = {
     kind: 'projectile',
     soulValue: 30,
     drops: [{ id: 'spirit_essence', chance: 0.45, min: 1, max: 1 }],
+  },
+  skeleton: {
+    key: 'skeleton',
+    hp: 60,
+    damage: 20,
+    speed: 55,
+    aggroRadius: 90,
+    attackRange: 17,
+    windupMs: 500,
+    recoverMs: 650,
+    kind: 'melee',
+    soulValue: 40,
+    behavior: { block: 0.4 },
+    drops: [
+      { id: 'bone_shard', chance: 0.6, min: 1, max: 1 },
+      { id: 'rusty_metal', chance: 0.35, min: 1, max: 1 },
+    ],
   },
 };
 

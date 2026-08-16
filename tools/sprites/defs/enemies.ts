@@ -515,6 +515,76 @@ const spiritDeath2: Matrix = [
   '................',
 ];
 
+// ── Скелет-воин: щит, блокирует фронтальные удары ────────────────────────
+const skelIdle1: Matrix = [
+  '................',
+  '................',
+  '.....bbb........',
+  '.....bbb........',
+  '.....bgb....33..',
+  '.....bbb....33..',
+  '......b.....33..',
+  '....bbbbb...33..',
+  '...b.bbb.b..33..',
+  '...b.b0b.b..33..',
+  '.....bbb........',
+  '.....b0b........',
+  '.....b.b........',
+  '.....b.b........',
+  '.....b.b........',
+  '....bb.bb.......',
+];
+const skelIdle2: Matrix = editRows(skelIdle1, {
+  4: '.....bgb....33..',
+  8: '...b.bbb.b..33..',
+});
+const skelWalk1: Matrix = editRows(skelIdle1, {
+  12: '.....b..b.......',
+  13: '....b...b.......',
+  14: '....b....b......',
+  15: '...bb....bb.....',
+});
+const skelWalk2: Matrix = editRows(skelIdle1, {
+  12: '.....b.b........',
+  13: '......bb........',
+  14: '.....b..b.......',
+  15: '....bb..bb......',
+});
+const skelWindup1: Matrix = editRows(skelIdle1, {
+  4: '.....bwb....33..',
+  7: '....bbbbb..33...',
+});
+const skelWindup2: Matrix = editRows(skelWindup1, {
+  4: '.....bww....33..',
+});
+const skelAttack1: Matrix = shift(
+  editRows(skelIdle1, {
+    7: '....bbbbbBB.33..',
+    8: '...b.bbb.b..33..',
+  }),
+  1,
+  0,
+);
+const skelAttack2: Matrix = shift(skelAttack1, 1, 0);
+const skelDeath: Matrix = [
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '..33......bbb...',
+  '..33...b.bgb....',
+  '.....bbbbbb.b...',
+  '..bbb.b0b.bb....',
+  '................',
+];
+
 // Порядок = индексы кадров (см. ENEMY_FRAMES в gameData.ts)
 // Новые кадры ТОЛЬКО аппендом в конец — индексы не сдвигать!
 export const enemyFrames: Matrix[] = [
@@ -558,4 +628,10 @@ export const enemyFrames: Matrix[] = [
   spiritWindup1, spiritWindup2, // 58-59
   spiritAttack, //                 60
   spiritDeath1, spiritDeath2, //   61-62
+  // ── скелет-воин (63-71) ──
+  skelIdle1, skelIdle2, //         63-64
+  skelWalk1, skelWalk2, //         65-66
+  skelWindup1, skelWindup2, //     67-68
+  skelAttack1, skelAttack2, //     69-70
+  skelDeath, //                    71
 ];

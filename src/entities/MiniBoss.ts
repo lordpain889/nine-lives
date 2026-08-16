@@ -39,6 +39,7 @@ export class MiniBoss extends Phaser.Physics.Arcade.Sprite implements Damageable
     if (this.bossState === 'dormant') {
       this.bossState = 'aggro';
       this.scene.registry.set('bossActive', true);
+      this.scene.registry.set('bossName', BOSS.nameRu);
       this.scene.registry.set('bossHp', this.hp);
       this.scene.registry.set('bossMaxHp', BOSS.hp);
     }
@@ -145,7 +146,7 @@ export class MiniBoss extends Phaser.Physics.Arcade.Sprite implements Damageable
     (this.body as Phaser.Physics.Arcade.Body).enable = false;
     this.play('warden-death');
     this.scene.registry.set('bossActive', false);
-    this.scene.events.emit('enemy-died', { soulValue: BOSS.soulValue, x: this.x, y: this.y });
-    this.scene.events.emit('boss-defeated');
+    this.scene.events.emit('enemy-died', { key: 'warden', soulValue: BOSS.soulValue, x: this.x, y: this.y });
+    this.scene.events.emit('boss-defeated', { boss: 'warden' });
   }
 }

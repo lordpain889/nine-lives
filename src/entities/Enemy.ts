@@ -136,6 +136,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
   takeHit(damage: number, fromX: number, fromY: number): void {
     if (this.enemyState === 'dead') return;
+
+    // блок фронтальных ударов (скелет): удар со стороны взгляда — щит
+    const blockChance = this.def.behavior?.block ?? 0;
+    if (blockChance > 0 && this.enemyState !== 'windup') {
+      const fromFront = this.flipX ? fromX < this.x : fromX > this.x;
+      if (fromFront && Math.random() < blockChance) {
+        this.scene.events.emit('float-text', { x: this.x, y: this.y - 10, text: 'блок', tint: 0x6f6c8a });
+        hitFlash(this.scene, this, 60);
+        return;
+      }
+    }
+
     this.hp -= damage;
     this.scene.events.emit('float-text', { x: this.x, y: this.y - 10, text: String(damage), tint: 0xc9a227 });
     hitFlash(this.scene, this);

@@ -7,6 +7,7 @@ import {
   NPC_FRAMES,
   UI_FRAMES,
   BOSS_FRAMES,
+  CARDINAL_FRAMES,
 } from '../config/gameData';
 import { registerFont } from '../ui/text';
 
@@ -74,6 +75,11 @@ export class BootScene extends Phaser.Scene {
     this.anims.create({ key: 'fishbone', frames: uiFrames(UI_FRAMES.fishbone), frameRate: 3, repeat: -1 });
 
     const bFrames = (list: readonly number[]) => list.map((f) => ({ key: 'boss', frame: f }));
+    this.anims.create({ key: 'cardinal-idle', frames: bFrames(CARDINAL_FRAMES.idle), frameRate: 2, repeat: -1 });
+    this.anims.create({ key: 'cardinal-windup', frames: bFrames(CARDINAL_FRAMES.windup), frameRate: 5, repeat: -1 });
+    this.anims.create({ key: 'cardinal-cast', frames: bFrames(CARDINAL_FRAMES.cast), frameRate: 8, repeat: 0 });
+    this.anims.create({ key: 'cardinal-summon', frames: bFrames(CARDINAL_FRAMES.summon), frameRate: 4, repeat: -1 });
+    this.anims.create({ key: 'cardinal-death', frames: bFrames(CARDINAL_FRAMES.death), frameRate: 3, repeat: 0 });
     this.anims.create({ key: 'warden-idle', frames: bFrames(BOSS_FRAMES.idle), frameRate: 2, repeat: -1 });
     this.anims.create({ key: 'warden-walk', frames: bFrames(BOSS_FRAMES.walk), frameRate: 4, repeat: -1 });
     this.anims.create({ key: 'warden-swipe-windup', frames: bFrames(BOSS_FRAMES.swipeWindup), frameRate: 5, repeat: -1 });

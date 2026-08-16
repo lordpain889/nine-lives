@@ -41,6 +41,9 @@ export interface EnemyDef {
   kind: 'melee' | 'projectile' | 'lob'; // lob = склянка по дуге → облако
   soulValue: number;
   drops?: DropDef[];
+  behavior?: {
+    block?: number; // шанс блока фронтального удара (скелет)
+  };
 }
 
 export interface SpawnPoint {

@@ -176,7 +176,86 @@ const death3: Matrix = [
   '................................',
 ];
 
-// Порядок = BOSS_FRAMES в gameData.ts
+// ── КАРДИНАЛ ЧУМНОГО СОБОРА: высокий кот-иерарх в митре ──────────────────
+// Строится программно: ряса-колонна + митра + посох с чумным орбом.
+function cardinalBase(): Matrix {
+  const rows = Array.from({ length: 32 }, () => Array.from({ length: 32 }, () => '.'));
+  const put = (x: number, y: number, ch: string) => {
+    if (x >= 0 && x < 32 && y >= 0 && y < 32) rows[y][x] = ch;
+  };
+  // митра
+  put(15, 2, 'y'); put(16, 2, 'y');
+  for (let x = 14; x <= 17; x++) put(x, 3, 'y');
+  for (let x = 13; x <= 18; x++) put(x, 4, 'y');
+  for (let x = 13; x <= 18; x++) put(x, 5, 'y');
+  put(15, 4, 'w');
+  // капюшон и морда
+  for (let y = 6; y <= 10; y++) for (let x = 12; x <= 19; x++) put(x, y, 'v');
+  for (let y = 7; y <= 9; y++) for (let x = 14; x <= 17; x++) put(x, y, '1');
+  put(14, 8, 'g'); put(17, 8, 'g');
+  // уши из-под митры
+  put(11, 6, 'v'); put(20, 6, 'v');
+  // плечи и ряса
+  for (let y = 11; y <= 26; y++) for (let x = 10; x <= 21; x++) put(x, y, 'v');
+  for (let y = 12; y <= 26; y++) { put(15, y, 'y'); put(16, y, 'y'); }
+  for (let x = 10; x <= 21; x++) put(x, 18, 'y');
+  // тени рясы
+  for (let y = 11; y <= 26; y++) { put(10, y, '1'); put(21, y, '1'); }
+  // подол
+  for (let x = 8; x <= 23; x++) { put(x, 27, 'v'); put(x, 28, 'v'); }
+  for (let x = 8; x <= 23; x++) put(x, 29, '1');
+  // посох с орбом
+  for (let y = 8; y <= 26; y++) put(24, y, 'b');
+  put(24, 6, 'g'); put(24, 7, 'g'); put(23, 6, 'g'); put(25, 6, 'g'); put(24, 5, 'w');
+  return rows.map((r) => r.join(''));
+}
+
+const cardIdle1 = cardinalBase();
+const cardIdle2 = editRows(cardIdle1, {
+  8: cardIdle1[8].slice(0, 14) + '1' + cardIdle1[8].slice(15), // моргание
+});
+const cardWindup1 = setPixels(cardIdle1, [
+  [24, 4, 'g'], [23, 5, 'g'], [25, 5, 'g'], [22, 7, 'g'], [26, 7, 'g'],
+]);
+const cardWindup2 = setPixels(cardWindup1, [
+  [24, 3, 'w'], [23, 4, 'w'], [25, 4, 'w'], [24, 5, 'g'],
+]);
+const cardCast = setPixels(cardIdle1, [
+  [26, 8, 'g'], [27, 9, 'g'], [28, 10, 'w'], [27, 7, 'g'],
+]);
+const cardSummon1 = setPixels(cardIdle1, [
+  [8, 13, 'v'], [7, 14, 'v'], [6, 15, 'v'], [23, 13, 'v'],
+  [6, 29, 'g'], [12, 30, 'g'], [19, 30, 'g'], [25, 29, 'g'],
+]);
+const cardSummon2 = setPixels(cardSummon1, [
+  [5, 28, 'g'], [26, 28, 'g'], [9, 30, 'w'], [22, 30, 'w'],
+]);
+const cardDeath1 = shift(cardIdle1, 0, 3);
+const cardDeath2: Matrix = (() => {
+  const rows = Array.from({ length: 32 }, () => '.'.repeat(32));
+  const m = rows.slice();
+  return editRows(m, {
+    22: '.............yyyy...............',
+    23: '............yyyyyy..............',
+    24: '..........vvvvvvvvvv............',
+    25: '........vvvvvvvvvvvvvv..........',
+    26: '.......vvvv11vvvvvvvvvv.........',
+    27: '......vvvvv1g1vvvyyvvvvv........',
+    28: '.....vvvvvvvvvvvvyyvvvvvv.......',
+    29: '.....111111111111111111111......',
+  });
+})();
+const cardDeath3: Matrix = (() => {
+  const rows = Array.from({ length: 32 }, () => '.'.repeat(32));
+  return editRows(rows, {
+    26: '.............yyyy...............',
+    27: '........vvvvyyyyyyvvvv..........',
+    28: '......vvvvvvvvvvvvvvvvvv........',
+    29: '.....11111111111111111111.......',
+  });
+})();
+
+// Порядок = BOSS_FRAMES / CARDINAL_FRAMES в gameData.ts
 export const bossFrames: Matrix[] = [
   idle1, idle2, //             0-1
   walk1, walk2, //             2-3
@@ -185,4 +264,10 @@ export const bossFrames: Matrix[] = [
   slamWindup1, slamWindup2, // 8-9
   slam1, slam2, //             10-11
   death1, death2, death3, //   12-14
+  // ── Кардинал (15-24) ──
+  cardIdle1, cardIdle2, //     15-16
+  cardWindup1, cardWindup2, // 17-18
+  cardCast, //                 19
+  cardSummon1, cardSummon2, // 20-21
+  cardDeath1, cardDeath2, cardDeath3, // 22-24
 ];

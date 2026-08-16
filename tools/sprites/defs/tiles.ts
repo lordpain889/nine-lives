@@ -166,7 +166,84 @@ export const tileFrames: Matrix[] = [
   shroomsSmall, // 17 декор
   ...townTiles(), //   18-25: город
   ...forestTiles(), // 26-28: лес (denseTree, stump, bigShroom)
+  ...cryptTiles(), //  29-38: катакомбы и собор
 ];
+
+// ── тайлы катакомб и собора (29+) ─────────────────────────────────────────
+function cryptTiles(): Matrix[] {
+  // каменный пол
+  const stone = (shift2: number): Matrix =>
+    speckled('2', [
+      [3 + shift2, 4, '1'], [9, 7, '1'], [12, 11, '1'], [5, 12, '3'], [13, 3, '1'],
+      [7, 9, '3'], [2, 8, '1'], [10 + shift2, 14, '1'],
+    ]);
+
+  // кирпичная стена катакомб (темнее городской)
+  const brickPx: Px = [];
+  for (const y of [3, 7, 11, 15]) for (let x = 0; x < T; x++) brickPx.push([x, y, '0']);
+  const joints = [[4, 12], [0, 8], [4, 12], [0, 8]];
+  joints.forEach((cols, band) => {
+    for (const x of cols) for (let y = band * 4; y < band * 4 + 3; y++) brickPx.push([x, y, '0']);
+  });
+  brickPx.push([6, 1, '2'], [13, 5, '2'], [2, 9, '2'], [10, 13, '2']);
+  const brick = setPixels(fill(T, T, '1'), brickPx);
+
+  // груда костей (коллизия)
+  const bonePilePx: Px = [];
+  for (let x = 3; x <= 12; x++) bonePilePx.push([x, 11, 'b']);
+  for (let x = 4; x <= 11; x++) bonePilePx.push([x, 10, 'b']);
+  for (let x = 5; x <= 10; x++) bonePilePx.push([x, 9, 'b']);
+  bonePilePx.push([6, 8, 'b'], [9, 8, 'b'], [7, 7, 'B'], [8, 7, 'B'], [7, 8, '0'], [10, 9, '0'], [5, 10, '0']);
+  for (let x = 3; x <= 12; x++) bonePilePx.push([x, 12, '0']);
+  const bonePile = setPixels(stone(0), bonePilePx);
+
+  // шипы: убраны / подняты
+  const spikesDown = setPixels(stone(1), [
+    [3, 8, '3'], [6, 8, '3'], [9, 8, '3'], [12, 8, '3'],
+    [3, 9, '0'], [6, 9, '0'], [9, 9, '0'], [12, 9, '0'],
+  ]);
+  const spikesUpPx: Px = [];
+  for (const sx of [3, 6, 9, 12]) {
+    spikesUpPx.push([sx, 4, 'B'], [sx, 5, 'B'], [sx - 1, 6, 'b'], [sx, 6, 'B'], [sx + 1, 6, 'b'], [sx, 7, 'b'], [sx, 8, '3']);
+  }
+  const spikesUp = setPixels(stone(1), spikesUpPx);
+
+  // собор: шахматный пол
+  const checkerA = speckled('2', [[4, 4, '3'], [11, 9, '3'], [7, 13, '1']]);
+  const checkerB = speckled('1', [[5, 6, '0'], [12, 3, '0'], [9, 11, '2']]);
+
+  // колонна (коллизия)
+  const pillarPx: Px = [];
+  for (let y = 0; y < T; y++) {
+    for (let x = 4; x <= 11; x++) pillarPx.push([x, y, '3']);
+    pillarPx.push([4, y, 'f'], [11, y, '2']);
+  }
+  pillarPx.push([6, 2, 'f'], [8, 9, '2'], [7, 13, '2']);
+  const pillar = setPixels(fill(T, T, '1'), pillarPx);
+
+  // витраж (коллизия, светится)
+  const stainedPx: Px = [];
+  for (let y = 2; y <= 13; y++) for (let x = 4; x <= 11; x++) {
+    const c = ['g', 'v', 'c', 'r'][(x + y * 2) % 4];
+    stainedPx.push([x, y, c]);
+  }
+  for (let y = 2; y <= 13; y++) stainedPx.push([7, y, '0'], [8, y, '0']);
+  for (let x = 4; x <= 11; x++) stainedPx.push([x, 7, '0']);
+  const stained = setPixels(setPixels(fill(T, T, '1'), []), stainedPx);
+
+  return [
+    stone(0), //   29
+    stone(1), //   30
+    brick, //      31 коллизия
+    bonePile, //   32 коллизия
+    spikesDown, // 33
+    spikesUp, //   34
+    checkerA, //   35
+    checkerB, //   36
+    pillar, //     37 коллизия
+    stained, //    38 коллизия (стена-витраж)
+  ];
+}
 
 // ── тайлы чумного города (индексы 18+) ────────────────────────────────────
 function townTiles(): Matrix[] {
