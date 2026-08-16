@@ -164,4 +164,64 @@ export const tileFrames: Matrix[] = [
   pebbles, //    15 декор
   bonesSmall, // 16 декор
   shroomsSmall, // 17 декор
+  ...townTiles(), // 18-25: город (см. ниже)
 ];
+
+// ── тайлы чумного города (индексы 18+) ────────────────────────────────────
+function townTiles(): Matrix[] {
+  // брусчатка: камни 4x4 со швами
+  const cobble = (seedShift: number): Matrix => {
+    const px: Px = [];
+    for (const y of [3, 7, 11, 15]) for (let x = 0; x < T; x++) px.push([x, y, '1']);
+    const joints = [[3, 11], [7, 15], [3, 11], [7, 15]];
+    joints.forEach((cols, band) => {
+      for (const x of cols) {
+        for (let y = band * 4; y < band * 4 + 3; y++) px.push([(x + seedShift) % T, y, '1']);
+      }
+    });
+    px.push([2 + seedShift, 2, '3'], [9, 6, '3'], [5, 10, '3'], [12, 13, '3']);
+    return setPixels(fill(T, T, '2'), px);
+  };
+
+  // стена дома: тёмные доски
+  const houseWallPx: Px = [];
+  for (const x of [3, 8, 12]) for (let y = 0; y < T; y++) houseWallPx.push([x, y, '0']);
+  houseWallPx.push([5, 3, '2'], [10, 9, '2'], [14, 5, '2'], [1, 12, '2']);
+  const houseWall = setPixels(fill(T, T, '1'), houseWallPx);
+
+  // крыша: черепица глубокого синего
+  const roofPx: Px = [];
+  for (const y of [3, 7, 11, 15]) for (let x = 0; x < T; x++) roofPx.push([x, y, '0']);
+  for (const y of [1, 5, 9, 13]) roofPx.push([4, y, '1'], [11, y, '1']);
+  const roof = setPixels(fill(T, T, 'u'), roofPx);
+
+  // дверь в стене (закрыта, интерьеров нет)
+  const doorPx: Px = [];
+  for (let y = 4; y < T; y++) for (let x = 5; x <= 10; x++) doorPx.push([x, y, '1']);
+  for (let y = 4; y < T; y++) doorPx.push([5, y, 'b'], [10, y, 'b']);
+  for (let x = 5; x <= 10; x++) doorPx.push([x, 4, 'b']);
+  doorPx.push([9, 10, 'y']);
+  const houseDoor = setPixels(houseWall, doorPx);
+
+  // окно с болезненным светом
+  const winPx: Px = [];
+  for (let y = 5; y <= 10; y++) for (let x = 5; x <= 10; x++) winPx.push([x, y, '0']);
+  for (let y = 6; y <= 9; y++) for (let x = 6; x <= 9; x++) winPx.push([x, y, 'g']);
+  winPx.push([7, 7, 'y'], [8, 8, 'y']);
+  const houseWindow = setPixels(houseWall, winPx);
+
+  // фонарный столб на брусчатке
+  const lanternPx: Px = [];
+  for (let y = 4; y <= 13; y++) lanternPx.push([7, y, '0']);
+  lanternPx.push([6, 3, '0'], [8, 3, '0'], [7, 2, 'y'], [7, 3, 'o'], [6, 14, '0'], [8, 14, '0']);
+  const lantern = setPixels(cobble(0), lanternPx);
+
+  // торговый прилавок
+  const stallPx: Px = [];
+  for (let x = 2; x <= 13; x++) stallPx.push([x, 4, 'o'], [x, 5, x % 2 ? 'o' : 'b']);
+  for (let x = 2; x <= 13; x++) stallPx.push([x, 9, 'b'], [x, 10, 'b']);
+  for (const x of [2, 13]) for (let y = 5; y <= 13; y++) stallPx.push([x, y, '1']);
+  const stall = setPixels(cobble(1), stallPx);
+
+  return [cobble(0), cobble(1), houseWall, roof, houseDoor, houseWindow, lantern, stall];
+}

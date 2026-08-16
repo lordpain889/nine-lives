@@ -15,6 +15,7 @@ import { bossFrames } from './defs/boss';
 import { buildFontFrames } from './defs/font';
 import { FONT_CHARS_PER_ROW, FONT_CELL_W, FONT_CELL_H } from './defs/fontCharset';
 import { itemFrames } from './defs/items';
+import { npcFrames } from './defs/npcs';
 import { vignette, fog, glow, particleDot } from './procedural';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
@@ -49,6 +50,9 @@ writeSheet(join(OUT, 'font.png'), buildFontFrames(), FONT_CELL_W, FONT_CELL_H, F
 
 // ── items.png: иконки предметов ───────────────────────────────────────────
 writeSheet(join(OUT, 'items.png'), itemFrames, 16, 16);
+
+// ── npcs.png: жители чумного города ───────────────────────────────────────
+writeSheet(join(OUT, 'npcs.png'), npcFrames, 16, 16);
 
 // ── процедурные текстуры атмосферы ────────────────────────────────────────
 vignette(join(OUT, 'vignette.png'));

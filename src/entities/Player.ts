@@ -129,6 +129,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
   update(time: number, delta: number): void {
     if (this.state === 'dead') return;
 
+    // диалог открыт — стоим и не реагируем на боевые клавиши
+    if (this.scene.registry.get('dialogOpen') as boolean) {
+      this.setVelocity(0, 0);
+      this.play(`${this.classDef.key}-idle`, true);
+      this.setDepth(this.y);
+      return;
+    }
+
     // реген стамины
     if (time > this.staminaLockedUntil && this.stamina < this.stats.maxStamina) {
       this.stamina = Math.min(

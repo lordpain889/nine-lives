@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
-import { CLASSES, CAT_FRAMES, FRAMES_PER_CLASS, ENEMY_FRAMES, UI_FRAMES, BOSS_FRAMES } from '../config/gameData';
+import {
+  CLASSES,
+  CAT_FRAMES,
+  FRAMES_PER_CLASS,
+  ENEMY_FRAMES,
+  NPC_FRAMES,
+  UI_FRAMES,
+  BOSS_FRAMES,
+} from '../config/gameData';
 import { registerFont } from '../ui/text';
 
 export class BootScene extends Phaser.Scene {
@@ -19,6 +27,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('glow', 'assets/glow.png');
     this.load.image('particle', 'assets/particle.png');
     this.load.spritesheet('items', 'assets/items.png', { frameWidth: 16, frameHeight: 16 });
+    this.load.spritesheet('npcs', 'assets/npcs.png', { frameWidth: 16, frameHeight: 16 });
   }
 
   create(): void {
@@ -41,7 +50,7 @@ export class BootScene extends Phaser.Scene {
 
     // анимации врагов
     const eFrames = (list: readonly number[]) => list.map((f) => ({ key: 'enemies', frame: f }));
-    for (const key of ['gravehound', 'acolyte'] as const) {
+    for (const key of ['gravehound', 'acolyte', 'rat', 'doctor'] as const) {
       const fr = ENEMY_FRAMES[key];
       this.anims.create({ key: `${key}-idle`, frames: eFrames(fr.idle), frameRate: 2, repeat: -1 });
       this.anims.create({ key: `${key}-walk`, frames: eFrames(fr.walk), frameRate: 6, repeat: -1 });
@@ -51,6 +60,14 @@ export class BootScene extends Phaser.Scene {
     }
     this.anims.create({ key: 'fish', frames: eFrames(ENEMY_FRAMES.fish), frameRate: 8, repeat: -1 });
     this.anims.create({ key: 'bolt', frames: eFrames(ENEMY_FRAMES.bolt), frameRate: 8, repeat: -1 });
+    this.anims.create({ key: 'flask', frames: eFrames(ENEMY_FRAMES.flask), frameRate: 8, repeat: -1 });
+    this.anims.create({ key: 'cloud', frames: eFrames(ENEMY_FRAMES.cloud), frameRate: 5, repeat: -1 });
+
+    // NPC
+    const nFrames = (list: readonly number[]) => list.map((f) => ({ key: 'npcs', frame: f }));
+    for (const key of ['blacksmith', 'quartermaster', 'merchant'] as const) {
+      this.anims.create({ key: `npc-${key}`, frames: nFrames(NPC_FRAMES[key]), frameRate: 1.5, repeat: -1 });
+    }
 
     const uiFrames = (list: readonly number[]) => list.map((f) => ({ key: 'ui', frame: f }));
     this.anims.create({ key: 'shrine-flame', frames: uiFrames(UI_FRAMES.flame), frameRate: 5, repeat: -1 });

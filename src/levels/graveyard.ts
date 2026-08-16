@@ -1,5 +1,5 @@
 import { TILES, DECOR } from '../config/gameData';
-import type { SpawnPoint } from '../types';
+import type { SpawnPoint, ZoneDef } from '../types';
 
 // Кладбище — единственная зона MVP. 60x40 тайлов (960x640 px).
 // Снизу вверх: врата (спавн + алтарь) → поле надгробий (гончие) →
@@ -127,3 +127,29 @@ export const SPAWNS: SpawnPoint[] = [
   { type: 'acolyte', x: 20, y: 16 },
   { type: 'boss', x: 30, y: 5 },
 ];
+
+export const graveyardZone: ZoneDef = {
+  key: 'graveyard',
+  nameRu: 'Проклятое кладбище',
+  buildMap() {
+    const ground = buildGraveyard();
+    // врата в город: проём в северной стене справа от склепа
+    for (const x of [44, 45, 46]) ground[0][x] = TILES.dirt;
+    return { ground, decor: buildGraveyardDecor(ground) };
+  },
+  spawns: SPAWNS,
+  exits: [
+    {
+      x: 44, y: 0, w: 3, h: 1,
+      toZone: 'town', toX: 25, toY: 32,
+      lockFlag: 'warden_dead',
+      lockedTextRu: 'врата заперты. страж ещё сторожит.',
+    },
+  ],
+  ambient: {
+    bgColor: '#0d0a14',
+    tint: { color: 0x1f1833, alpha: 0.1 },
+    fogDensity: 1,
+    particles: ['dust'],
+  },
+};

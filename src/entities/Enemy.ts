@@ -91,6 +91,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
               dir.normalize().scale(this.def.speed * 2.2);
               this.setVelocity(dir.x, dir.y);
             }
+          } else if (this.def.kind === 'lob') {
+            this.scene.events.emit('enemy-lob', {
+              x: this.x,
+              y: this.y - 8,
+              targetX: this.targetX,
+              targetY: this.targetY,
+              damage: this.def.damage,
+            });
           } else {
             this.scene.events.emit('enemy-cast', {
               x: this.x,

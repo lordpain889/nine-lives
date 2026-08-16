@@ -66,9 +66,26 @@ export const CAT_FRAMES = {
 export const ENEMY_FRAMES = {
   gravehound: { idle: [0, 1], walk: [2, 23, 3, 23], windup: [4, 5], attack: [6, 7], death: [8, 9] },
   acolyte: { idle: [10, 11], walk: [12, 13], windup: [14, 15], attack: [16], death: [17, 18] },
+  rat: { idle: [24, 25], walk: [26, 27], windup: [28, 29], attack: [30], death: [31] },
+  doctor: { idle: [32, 33], walk: [34, 35], windup: [36, 37], attack: [38], death: [39, 40] },
   fish: [19, 20],
   bolt: [21, 22],
+  flask: [41, 42],
+  cloud: [43, 44],
 } as const;
+
+// NPC (npcs.png)
+export const NPC_FRAMES = {
+  blacksmith: [0, 1],
+  quartermaster: [2, 3],
+  merchant: [4, 5],
+} as const;
+
+export const NPC_NAMES: Record<string, string> = {
+  blacksmith: 'Кузнец Углелап',
+  quartermaster: 'Квартирмейстер Шрам',
+  merchant: 'Торговка Полночь',
+};
 
 // ─── Кадры ui.png ────────────────────────────────────────────────────────
 export const UI_FRAMES = {
@@ -135,6 +152,26 @@ export const DECOR = {
   shrooms: 17,
 } as const;
 
+// город (18+)
+export const TOWN_TILES = {
+  cobbleA: 18,
+  cobbleB: 19,
+  houseWall: 20,
+  roof: 21,
+  houseDoor: 22,
+  houseWindow: 23,
+  lantern: 24,
+  stall: 25,
+} as const;
+
+export const TOWN_COLLIDING = [
+  TOWN_TILES.houseWall,
+  TOWN_TILES.roof,
+  TOWN_TILES.houseDoor,
+  TOWN_TILES.houseWindow,
+  TOWN_TILES.stall,
+];
+
 // ─── Враги ────────────────────────────────────────────────────────────────
 export const ENEMIES: Record<string, EnemyDef> = {
   gravehound: {
@@ -167,6 +204,35 @@ export const ENEMIES: Record<string, EnemyDef> = {
     drops: [
       { id: 'wax', chance: 0.5, min: 1, max: 2 },
       { id: 'robe_scrap', chance: 0.3, min: 1, max: 1 },
+    ],
+  },
+  rat: {
+    key: 'rat',
+    hp: 12,
+    damage: 6,
+    speed: 90,
+    aggroRadius: 85,
+    attackRange: 12,
+    windupMs: 300,
+    recoverMs: 400,
+    kind: 'melee',
+    soulValue: 4,
+    drops: [{ id: 'rat_tail', chance: 0.7, min: 1, max: 1 }],
+  },
+  doctor: {
+    key: 'doctor',
+    hp: 45,
+    damage: 12,
+    speed: 40,
+    aggroRadius: 115,
+    attackRange: 85,
+    windupMs: 800,
+    recoverMs: 1100,
+    kind: 'lob',
+    soulValue: 35,
+    drops: [
+      { id: 'plague_vial', chance: 0.5, min: 1, max: 1 },
+      { id: 'wax', chance: 0.3, min: 1, max: 1 },
     ],
   },
 };

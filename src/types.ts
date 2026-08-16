@@ -38,7 +38,7 @@ export interface EnemyDef {
   attackRange: number;
   windupMs: number;
   recoverMs: number;
-  kind: 'melee' | 'projectile';
+  kind: 'melee' | 'projectile' | 'lob'; // lob = склянка по дуге → облако
   soulValue: number;
   drops?: DropDef[];
 }
@@ -78,8 +78,38 @@ export interface InvEntry {
   qty: number;
 }
 
-// ─── Сейв (localStorage; profileId — будущая серверная идентичность) ─────
+// ─── Зоны ────────────────────────────────────────────────────────────────
 export type ZoneKey = 'graveyard' | 'town' | 'forest' | 'catacombs' | 'cathedral';
+
+export interface ExitDef {
+  x: number; //  в тайлах
+  y: number;
+  w: number;
+  h: number;
+  toZone: ZoneKey;
+  toX: number; // тайл появления в целевой зоне
+  toY: number;
+  lockFlag?: string; //     флаг сейва, без которого проход закрыт
+  lockedTextRu?: string;
+}
+
+export interface ZoneAmbient {
+  bgColor: string;
+  tint?: { color: number; alpha: number };
+  fogDensity: 0 | 1 | 2;
+  particles: Array<'dust' | 'fireflies' | 'spores' | 'embers'>;
+}
+
+export interface ZoneDef {
+  key: ZoneKey;
+  nameRu: string;
+  buildMap(): { ground: number[][]; decor: number[][] };
+  spawns: SpawnPoint[];
+  exits: ExitDef[];
+  ambient: ZoneAmbient;
+}
+
+// ─── Сейв (localStorage; profileId — будущая серверная идентичность) ─────
 
 export interface SaveGame {
   version: 1;
