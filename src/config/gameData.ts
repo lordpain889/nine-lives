@@ -148,6 +148,10 @@ export const ENEMIES: Record<string, EnemyDef> = {
     recoverMs: 500,
     kind: 'melee',
     soulValue: 10,
+    drops: [
+      { id: 'bone_hound', chance: 0.6, min: 1, max: 1 },
+      { id: 'hide_rotten', chance: 0.25, min: 1, max: 1 },
+    ],
   },
   acolyte: {
     key: 'acolyte',
@@ -160,6 +164,10 @@ export const ENEMIES: Record<string, EnemyDef> = {
     recoverMs: 900,
     kind: 'projectile',
     soulValue: 25,
+    drops: [
+      { id: 'wax', chance: 0.5, min: 1, max: 2 },
+      { id: 'robe_scrap', chance: 0.3, min: 1, max: 1 },
+    ],
   },
 };
 

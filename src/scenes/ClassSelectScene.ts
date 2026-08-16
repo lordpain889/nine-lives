@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/gameConfig';
 import { CLASSES, STRINGS } from '../config/gameData';
+import { newSave, persist } from '../systems/save';
 import { uiText, setUiText, UI } from '../ui/text';
 
 export class ClassSelectScene extends Phaser.Scene {
@@ -46,7 +47,11 @@ export class ClassSelectScene extends Phaser.Scene {
     kb.on('keydown-A', () => this.move(-1));
     kb.on('keydown-D', () => this.move(1));
     kb.on('keydown-ENTER', () => {
-      this.registry.set('classKey', CLASSES[this.selected].key);
+      const classKey = CLASSES[this.selected].key;
+      const save = newSave(classKey);
+      persist(save);
+      this.registry.set('save', save);
+      this.registry.set('classKey', classKey);
       this.scene.start('game');
     });
   }

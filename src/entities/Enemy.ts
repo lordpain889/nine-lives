@@ -139,7 +139,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
     this.setVelocity(0, 0);
     (this.body as Phaser.Physics.Arcade.Body).enable = false;
     this.play(`${this.def.key}-death`);
-    this.scene.events.emit('enemy-died', { soulValue: this.def.soulValue, x: this.x, y: this.y });
+    this.scene.events.emit('enemy-died', {
+      soulValue: this.def.soulValue,
+      x: this.x,
+      y: this.y,
+      drops: this.def.drops,
+    });
     this.scene.tweens.add({
       targets: this,
       alpha: 0,

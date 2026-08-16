@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import type { ClassDef } from '../types';
+import type { ClassDef, EquipSlot, SaveGame } from '../types';
 import { TUNING } from '../config/gameData';
+import { itemById } from '../config/items';
 import { Damageable, knockbackFrom, hitFlash } from '../systems/combat';
 
 type Facing = 'left' | 'right' | 'up' | 'down';
@@ -13,10 +14,21 @@ const FACING_VEC: Record<Facing, [number, number]> = {
   down: [0, 1],
 };
 
+// Производные статы: база класса + модификаторы экипировки
+export interface DerivedStats {
+  maxHp: number;
+  maxStamina: number;
+  speed: number;
+  damage: number;
+  staminaCostMul: number;
+  cooldownMul: number;
+}
+
 export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
   readonly classDef: ClassDef;
   facing: Facing = 'down';
   state: State = 'move';
+  stats!: DerivedStats;
 
   hp: number;
   stamina: number;
@@ -29,10 +41,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
   constructor(scene: Phaser.Scene, x: number, y: number, classDef: ClassDef) {
     super(scene, x, y, 'cats');
     this.classDef = classDef;
-    this.hp = classDef.hp;
-    this.stamina = classDef.stamina;
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.recomputeStats();
+    this.hp = this.stats.maxHp;
+    this.stamina = this.stats.maxStamina;
 
     // хитбокс — «лапы» (нижняя часть), чтобы верх спрайта заходил за препятствия
     const body = this.body as Phaser.Physics.Arcade.Body;
@@ -68,6 +81,38 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
     return this.scene.time.now < this.iframesUntil;
   }
 
+  // База класса + модификаторы экипировки из сейва
+  recomputeStats(): void {
+    const c = this.classDef;
+    const stats: DerivedStats = {
+      maxHp: c.hp,
+      maxStamina: c.stamina,
+      speed: c.speed,
+      damage: c.attack.damage,
+      staminaCostMul: 1,
+      cooldownMul: 1,
+    };
+    const save = this.scene.registry.get('save') as SaveGame | undefined;
+    if (save) {
+      for (const slot of ['weapon', 'armor', 'charm'] as EquipSlot[]) {
+        const id = save.equipment[slot];
+        if (!id) continue;
+        const mods = itemById(id).stats;
+        if (!mods) continue;
+        stats.maxHp += mods.hp ?? 0;
+        stats.maxStamina += mods.stamina ?? 0;
+        stats.speed += mods.speed ?? 0;
+        stats.damage += mods.damage ?? 0;
+        stats.staminaCostMul *= mods.staminaCostMul ?? 1;
+        stats.cooldownMul *= mods.cooldownMul ?? 1;
+      }
+    }
+    this.stats = stats;
+    this.hp = Math.min(this.hp ?? stats.maxHp, stats.maxHp);
+    this.stamina = Math.min(this.stamina ?? stats.maxStamina, stats.maxStamina);
+    this.syncHud();
+  }
+
   private spendStamina(cost: number): void {
     this.stamina = Math.max(0, this.stamina - cost);
     this.staminaLockedUntil = this.scene.time.now + TUNING.staminaRegenDelayMs;
@@ -76,18 +121,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
   private syncHud(): void {
     this.scene.registry.set('hp', this.hp);
-    this.scene.registry.set('maxHp', this.classDef.hp);
+    this.scene.registry.set('maxHp', this.stats.maxHp);
     this.scene.registry.set('stamina', this.stamina);
-    this.scene.registry.set('maxStamina', this.classDef.stamina);
+    this.scene.registry.set('maxStamina', this.stats.maxStamina);
   }
 
   update(time: number, delta: number): void {
     if (this.state === 'dead') return;
 
     // реген стамины
-    if (time > this.staminaLockedUntil && this.stamina < this.classDef.stamina) {
+    if (time > this.staminaLockedUntil && this.stamina < this.stats.maxStamina) {
       this.stamina = Math.min(
-        this.classDef.stamina,
+        this.stats.maxStamina,
         this.stamina + (TUNING.staminaRegenPerSec * delta) / 1000,
       );
       this.syncHud();
@@ -106,7 +151,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
     if (k.up.isDown || k.w.isDown) vy -= 1;
     if (k.down.isDown || k.s.isDown) vy += 1;
 
-    const v = new Phaser.Math.Vector2(vx, vy).normalize().scale(this.classDef.speed);
+    const v = new Phaser.Math.Vector2(vx, vy).normalize().scale(this.stats.speed);
     this.setVelocity(v.x, v.y);
 
     if (vx !== 0 || vy !== 0) {
@@ -146,14 +191,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
   private tryAttack(): void {
     const atk = this.classDef.attack;
-    if (this.stamina < atk.staminaCost) return;
-    this.spendStamina(atk.staminaCost);
-    this.nextAttackAt = this.scene.time.now + atk.cooldownMs;
+    const cost = atk.staminaCost * this.stats.staminaCostMul;
+    if (this.stamina < cost) return;
+    this.spendStamina(cost);
+    this.nextAttackAt = this.scene.time.now + atk.cooldownMs * this.stats.cooldownMul;
     this.state = 'attack';
     this.setVelocity(0, 0);
     this.play(`${this.classDef.key}-attack`);
 
     const [dx, dy] = FACING_VEC[this.facing];
+    const damage = this.stats.damage;
     // удар/каст на активном кадре анимации (~70 мс от старта)
     this.scene.time.delayedCall(70, () => {
       if (this.state !== 'attack') return;
@@ -161,7 +208,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
         this.scene.events.emit('player-melee', {
           x: this.x + dx * atk.range,
           y: this.y + dy * atk.range,
-          damage: atk.damage,
+          damage,
         });
       } else {
         this.scene.events.emit('player-cast', {
@@ -169,7 +216,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
           y: this.y + dy * 10,
           dirX: dx,
           dirY: dy,
-          damage: atk.damage,
+          damage,
         });
       }
     });
@@ -181,8 +228,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
   private tryRoll(vx: number, vy: number): void {
     const roll = this.classDef.roll;
-    if (this.stamina < roll.staminaCost) return;
-    this.spendStamina(roll.staminaCost);
+    const cost = roll.staminaCost * this.stats.staminaCostMul;
+    if (this.stamina < cost) return;
+    this.spendStamina(cost);
     this.state = 'roll';
     this.iframesUntil = this.scene.time.now + roll.iframesMs;
 
@@ -203,9 +251,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
   private drinkFlask(): void {
     const flasks = (this.scene.registry.get('flasks') as number) ?? 0;
-    if (flasks <= 0 || this.hp >= this.classDef.hp) return;
+    if (flasks <= 0 || this.hp >= this.stats.maxHp) return;
     this.scene.registry.set('flasks', flasks - 1);
-    this.hp = Math.min(this.classDef.hp, this.hp + TUNING.flaskHeal);
+    this.hp = Math.min(this.stats.maxHp, this.hp + TUNING.flaskHeal);
     this.syncHud();
     // зелёная вспышка лечения
     this.setTintFill(0x3e7a4e);
@@ -239,11 +287,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
     this.scene.events.emit('player-died');
   }
 
-  // Воскрешение у чекпоинта (M4)
+  // Воскрешение у чекпоинта
   revive(x: number, y: number): void {
     this.setPosition(x, y);
-    this.hp = this.classDef.hp;
-    this.stamina = this.classDef.stamina;
+    this.hp = this.stats.maxHp;
+    this.stamina = this.stats.maxStamina;
     this.state = 'move';
     this.iframesUntil = this.scene.time.now + 800;
     this.clearTint();

@@ -4,6 +4,7 @@ import { TitleScene } from '../scenes/TitleScene';
 import { ClassSelectScene } from '../scenes/ClassSelectScene';
 import { GameScene } from '../scenes/GameScene';
 import { HudScene } from '../scenes/HudScene';
+import { InventoryScene } from '../scenes/InventoryScene';
 
 export const GAME_WIDTH = 320;
 export const GAME_HEIGHT = 180;
@@ -32,5 +33,5 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, TitleScene, ClassSelectScene, GameScene, HudScene],
+  scene: [BootScene, TitleScene, ClassSelectScene, GameScene, HudScene, InventoryScene],
 };
