@@ -48,7 +48,7 @@ export class JournalScene extends Phaser.Scene {
       this.scene.stop();
       this.scene.resume('game');
     };
-    this.input.keyboard!.on('keydown-J', close);
+    this.input.keyboard!.on('keydown-Q', close);
     this.input.keyboard!.on('keydown-ESC', close);
   }
 }

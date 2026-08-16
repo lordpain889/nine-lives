@@ -358,7 +358,7 @@ export const STRINGS = {
   restHint: 'E — отдохнуть у алтаря',
   rested: 'алтарь принял тебя',
   soulsRecovered: 'кости возвращены',
-  controls: 'WASD — ходьба   J — удар   K — перекат   H — фляга',
-  victorySub: 'кладбище обрело покой. девять жизней целы.',
+  controls: 'J удар  K перекат  H фляга  TAB сумка  Q журнал',
+  victorySub: 'чума отступает. девять жизней целы.',
   backToTitle: 'ENTER — на титул',
 };

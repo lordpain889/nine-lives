@@ -405,7 +405,7 @@ export class GameScene extends Phaser.Scene {
       openInventory();
     });
     this.input.keyboard!.on('keydown-I', openInventory);
-    this.input.keyboard!.on('keydown-J', () => {
+    this.input.keyboard!.on('keydown-Q', () => {
       if (this.player.state === 'dead' || this.dialog.isOpen || this.transitioning) return;
       this.scene.pause();
       this.scene.launch('journal');
