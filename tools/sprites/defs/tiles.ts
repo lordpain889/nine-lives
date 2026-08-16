@@ -1,4 +1,4 @@
-import { Matrix, fill, setPixels } from '../lib';
+import { Matrix, blank, fill, setPixels } from '../lib';
 
 // Тайлы 16x16, прямые символы палитры (без плейсхолдеров).
 // Порядок в массиве tileFrames = индексы тайлов в карте.
@@ -116,7 +116,35 @@ treePx.push([4, 4, '1'], [5, 5, '1'], [11, 3, '1'], [10, 4, '1']); // ветви
 for (let x = 4; x <= 11; x++) treePx.push([x, 14, '0']); // корни/тень
 const tree = setPixels(grassA, treePx);
 
-// Индексы тайлов (см. TILES в src/config/gameData.ts)
+// ── декор-слой (прозрачный фон, кладётся ПОВЕРХ земли) ────────────────────
+const d = blank(T, T);
+
+const tuftA = setPixels(d, [
+  [4, 9, 'g'], [4, 10, 'g'], [5, 10, 'g'], [3, 10, '2'],
+  [11, 5, 'g'], [11, 6, 'g'], [12, 6, '2'],
+]);
+const tuftB = setPixels(d, [
+  [7, 12, 'g'], [7, 13, 'g'], [8, 13, 'g'], [6, 13, '2'],
+  [13, 3, 'g'], [13, 4, '2'], [2, 6, 'g'], [2, 7, '2'],
+]);
+const crack = setPixels(d, [
+  [3, 8, '0'], [4, 9, '0'], [5, 9, '0'], [6, 10, '0'], [7, 10, '0'],
+  [8, 11, '0'], [9, 11, '0'], [10, 12, '0'], [6, 11, '0'],
+]);
+const pebbles = setPixels(d, [
+  [4, 4, '3'], [5, 4, '2'], [10, 8, '3'], [11, 8, '2'], [11, 9, '2'],
+  [6, 12, '2'], [13, 3, '3'],
+]);
+const bonesSmall = setPixels(d, [
+  [4, 10, 'b'], [5, 10, 'b'], [6, 10, 'b'], [3, 9, 'b'], [7, 11, 'b'],
+  [11, 5, 'b'], [12, 5, 'b'], [12, 4, 'b'],
+]);
+const shroomsSmall = setPixels(d, [
+  [5, 9, 'g'], [4, 9, 'g'], [4, 8, 'g'], [5, 8, 'g'], [4, 10, 'b'], [5, 10, 'b'],
+  [11, 12, 'g'], [11, 11, 'g'], [11, 13, 'b'],
+]);
+
+// Индексы тайлов (см. TILES/DECOR в src/config/gameData.ts)
 export const tileFrames: Matrix[] = [
   grassA, //     0
   grassB, //     1
@@ -130,4 +158,10 @@ export const tileFrames: Matrix[] = [
   candle, //     9
   shrineBase, // 10
   tree, //       11 коллизия
+  tuftA, //      12 декор
+  tuftB, //      13 декор
+  crack, //      14 декор
+  pebbles, //    15 декор
+  bonesSmall, // 16 декор
+  shroomsSmall, // 17 декор
 ];

@@ -5,8 +5,9 @@ import { MiniBoss } from '../entities/MiniBoss';
 import { Shrine } from '../entities/Shrine';
 import { classByKey, COLLIDING_TILES, ENEMIES, STRINGS, TUNING } from '../config/gameData';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
-import { buildGraveyard, SPAWNS } from '../levels/graveyard';
+import { buildGraveyard, buildGraveyardDecor, SPAWNS } from '../levels/graveyard';
 import { spawnMeleeHitbox } from '../systems/combat';
+import { Atmosphere } from '../systems/atmosphere';
 import { uiText, UI } from '../ui/text';
 
 const SHRINE_RADIUS = 22;
@@ -24,6 +25,7 @@ export class GameScene extends Phaser.Scene {
   private layer!: Phaser.Tilemaps.TilemapLayer;
   private keyE!: Phaser.Input.Keyboard.Key;
   private dying = false;
+  private atmosphere!: Atmosphere;
 
   constructor() {
     super('game');
@@ -35,6 +37,15 @@ export class GameScene extends Phaser.Scene {
     const tileset = map.addTilesetImage('tiles', 'tiles', 16, 16)!;
     this.layer = map.createLayer(0, tileset, 0, 0)!;
     this.layer.setCollision(COLLIDING_TILES);
+
+    // декор-слой поверх земли (без коллизий)
+    const decorMap = this.make.tilemap({
+      data: buildGraveyardDecor(data),
+      tileWidth: 16,
+      tileHeight: 16,
+    });
+    decorMap.addTilesetImage('tiles', 'tiles', 16, 16);
+    decorMap.createLayer(0, 'tiles', 0, 0)!.setDepth(1);
 
     // ── новый забег: сброс состояния ──
     const ps = SPAWNS.find((s) => s.type === 'player')!;
@@ -196,6 +207,22 @@ export class GameScene extends Phaser.Scene {
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.startFollow(this.player, true, 0.12, 0.12);
     this.scene.launch('hud');
+
+    // ── атмосфера: виньетка, туман, частицы, свечение огней ──
+    this.atmosphere = new Atmosphere(
+      this,
+      { tint: { color: 0x1f1833, alpha: 0.1 }, fogDensity: 1, particles: ['dust'] },
+      map.widthInPixels,
+      map.heightInPixels,
+    );
+    // свечение у свечей и алтарей по данным карты
+    for (let ty = 0; ty < data.length; ty++) {
+      for (let tx = 0; tx < data[ty].length; tx++) {
+        const t = data[ty][tx];
+        if (t === 9) this.atmosphere.addGlow(tx * 16 + 8, ty * 16 + 8, 0xc96b2e, 0.45, 0.55);
+        if (t === 10) this.atmosphere.addGlow(tx * 16 + 8, ty * 16 + 5, 0xc9a227, 0.7, 0.5);
+      }
+    }
   }
 
   // ── враги: спавн и респавн (правило алтаря) ──
@@ -244,6 +271,7 @@ export class GameScene extends Phaser.Scene {
     this.player.revive(this.player.x, this.player.y);
     this.spawnEnemies(); // отдых воскрешает мир
     this.cameras.main.flash(400, 201, 162, 39, false);
+    this.atmosphere.shrineBurst(this.player.x, this.player.y - 6);
     this.showBanner(STRINGS.rested, UI.gold);
   }
 
@@ -340,6 +368,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
+    this.atmosphere.update(delta, this.cameras.main);
     for (const obj of this.enemies.getChildren()) {
       (obj as Enemy).update(this.player);
     }

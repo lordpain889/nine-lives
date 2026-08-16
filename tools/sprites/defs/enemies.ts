@@ -218,7 +218,15 @@ const bolt2: Matrix = setPixels(
   ],
 );
 
+// шаг-переход (лапы под корпусом)
+const houndWalk3: Matrix = editRows(houndIdle1, {
+  12: '.....b.bb..b....',
+  13: '....b..bb..b....',
+  14: '....b..bb...b...',
+});
+
 // Порядок = индексы кадров (см. ENEMY_FRAMES в gameData.ts)
+// Новые кадры ТОЛЬКО аппендом в конец — индексы не сдвигать!
 export const enemyFrames: Matrix[] = [
   houndIdle1, houndIdle2, //       0-1
   houndWalk1, houndWalk2, //       2-3
@@ -232,4 +240,5 @@ export const enemyFrames: Matrix[] = [
   acolyteDeath1, acolyteDeath2, // 17-18
   fish1, fish2, //                 19-20
   bolt1, bolt2, //                 21-22
+  houndWalk3, //                   23
 ];

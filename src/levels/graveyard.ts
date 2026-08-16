@@ -1,4 +1,4 @@
-import { TILES } from '../config/gameData';
+import { TILES, DECOR } from '../config/gameData';
 import type { SpawnPoint } from '../types';
 
 // Кладбище — единственная зона MVP. 60x40 тайлов (960x640 px).
@@ -7,6 +7,22 @@ import type { SpawnPoint } from '../types';
 
 export const MAP_W = 60;
 export const MAP_H = 40;
+
+// Декор-слой: -1 = пусто, иначе индекс тайла из DECOR
+export function buildGraveyardDecor(ground: number[][]): number[][] {
+  const decor: number[][] = ground.map((row) => row.map(() => -1));
+  const variants = [DECOR.tuftA, DECOR.tuftB, DECOR.crack, DECOR.pebbles, DECOR.bones, DECOR.shrooms];
+  // детерминированный скаттер только по проходимой земле
+  for (let y = 1; y < MAP_H - 1; y++) {
+    for (let x = 1; x < MAP_W - 1; x++) {
+      const g = ground[y][x];
+      if (g !== TILES.grassA && g !== TILES.grassB) continue;
+      const h = (x * 2654435761 + y * 40503) % 100;
+      if (h < 4) decor[y][x] = variants[(x * 7 + y * 13) % variants.length];
+    }
+  }
+  return decor;
+}
 
 export function buildGraveyard(): number[][] {
   const m: number[][] = [];

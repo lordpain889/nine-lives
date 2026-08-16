@@ -1,23 +1,29 @@
 import { join } from 'node:path';
 import { Matrix, overlay, recolor, writeSheet } from './lib';
-import { catBodyFrames, weaponOverlays, classRecolors, FRAMES_PER_CLASS } from './defs/cats';
+import {
+  catBodyFrames,
+  weaponOverlays,
+  classRecolors,
+  FRAMES_PER_CLASS,
+  ATTACK_FRAME_START,
+  ATTACK_FRAME_COUNT,
+} from './defs/cats';
 import { tileFrames } from './defs/tiles';
 import { enemyFrames } from './defs/enemies';
 import { uiFrames } from './defs/ui';
 import { bossFrames } from './defs/boss';
 import { buildFontFrames } from './defs/font';
 import { FONT_CHARS_PER_ROW, FONT_CELL_W, FONT_CELL_H } from './defs/fontCharset';
+import { vignette, fog, glow, particleDot } from './procedural';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
 // ── cats.png: ряд = класс, столбцы = кадры (индексы в CAT_FRAMES) ─────────
-const ATTACK_FRAME_START = 10; // кадры 10-12 — атака, на них кладём оружие
-
 const catFrames: Matrix[] = [];
 for (const { key, map } of classRecolors) {
   catBodyFrames.forEach((body, i) => {
     let frame = body;
-    if (i >= ATTACK_FRAME_START && i < ATTACK_FRAME_START + 3) {
+    if (i >= ATTACK_FRAME_START && i < ATTACK_FRAME_START + ATTACK_FRAME_COUNT) {
       frame = overlay(frame, weaponOverlays[key][i - ATTACK_FRAME_START]);
     }
     catFrames.push(recolor(frame, map));
@@ -39,5 +45,11 @@ writeSheet(join(OUT, 'boss.png'), bossFrames, 32, 32);
 
 // ── font.png: пиксельный шрифт 5×7 (клетки 6×8) ───────────────────────────
 writeSheet(join(OUT, 'font.png'), buildFontFrames(), FONT_CELL_W, FONT_CELL_H, FONT_CHARS_PER_ROW);
+
+// ── процедурные текстуры атмосферы ────────────────────────────────────────
+vignette(join(OUT, 'vignette.png'));
+fog(join(OUT, 'fog.png'));
+glow(join(OUT, 'glow.png'));
+particleDot(join(OUT, 'particle.png'));
 
 console.log('Done.');

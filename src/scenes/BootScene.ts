@@ -14,6 +14,10 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('ui', 'assets/ui.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 32, frameHeight: 32 });
     this.load.image('font', 'assets/font.png');
+    this.load.image('vignette', 'assets/vignette.png');
+    this.load.image('fog', 'assets/fog.png');
+    this.load.image('glow', 'assets/glow.png');
+    this.load.image('particle', 'assets/particle.png');
   }
 
   create(): void {
@@ -26,10 +30,10 @@ export class BootScene extends Phaser.Scene {
         list.map((f) => ({ key: 'cats', frame: off + f }));
 
       this.anims.create({ key: `${def.key}-idle`, frames: frames(CAT_FRAMES.idle), frameRate: 2, repeat: -1 });
-      this.anims.create({ key: `${def.key}-walk`, frames: frames(CAT_FRAMES.walkSide), frameRate: 8, repeat: -1 });
-      this.anims.create({ key: `${def.key}-walk-down`, frames: frames(CAT_FRAMES.walkDown), frameRate: 6, repeat: -1 });
-      this.anims.create({ key: `${def.key}-walk-up`, frames: frames(CAT_FRAMES.walkUp), frameRate: 6, repeat: -1 });
-      this.anims.create({ key: `${def.key}-attack`, frames: frames(CAT_FRAMES.attack), frameRate: 14, repeat: 0 });
+      this.anims.create({ key: `${def.key}-walk`, frames: frames(CAT_FRAMES.walkSide), frameRate: 11, repeat: -1 });
+      this.anims.create({ key: `${def.key}-walk-down`, frames: frames(CAT_FRAMES.walkDown), frameRate: 8, repeat: -1 });
+      this.anims.create({ key: `${def.key}-walk-up`, frames: frames(CAT_FRAMES.walkUp), frameRate: 8, repeat: -1 });
+      this.anims.create({ key: `${def.key}-attack`, frames: frames(CAT_FRAMES.attack), frameRate: 16, repeat: 0 });
       this.anims.create({ key: `${def.key}-roll`, frames: frames(CAT_FRAMES.roll), frameRate: 14, repeat: -1 });
       this.anims.create({ key: `${def.key}-death`, frames: frames(CAT_FRAMES.death), frameRate: 4, repeat: 0 });
     });

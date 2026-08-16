@@ -51,20 +51,20 @@ export function classByKey(key: string): ClassDef {
 }
 
 // ─── Кадры спрайтшита котов (столбцы; ряд = индекс класса в CLASSES) ─────
-export const FRAMES_PER_CLASS = 19;
+export const FRAMES_PER_CLASS = 26;
 export const CAT_FRAMES = {
   idle: [0, 1],
-  walkSide: [2, 3, 4, 5],
-  walkDown: [6, 7],
-  walkUp: [8, 9],
-  attack: [10, 11, 12],
-  roll: [13, 14, 15, 16],
-  death: [17, 18],
+  walkSide: [2, 3, 4, 5, 6, 7],
+  walkDown: [8, 9, 10, 11],
+  walkUp: [12, 13, 14, 15],
+  attack: [16, 17, 18, 19],
+  roll: [20, 21, 22, 23],
+  death: [24, 25],
 } as const;
 
 // ─── Кадры спрайтшита врагов (enemies.png, один ряд) ─────────────────────
 export const ENEMY_FRAMES = {
-  gravehound: { idle: [0, 1], walk: [2, 3], windup: [4, 5], attack: [6, 7], death: [8, 9] },
+  gravehound: { idle: [0, 1], walk: [2, 23, 3, 23], windup: [4, 5], attack: [6, 7], death: [8, 9] },
   acolyte: { idle: [10, 11], walk: [12, 13], windup: [14, 15], attack: [16], death: [17, 18] },
   fish: [19, 20],
   bolt: [21, 22],
@@ -124,6 +124,16 @@ export const COLLIDING_TILES = [
   TILES.void,
   TILES.tree,
 ];
+
+// декор-слой (прозрачные, поверх земли, без коллизий)
+export const DECOR = {
+  tuftA: 12,
+  tuftB: 13,
+  crack: 14,
+  pebbles: 15,
+  bones: 16,
+  shrooms: 17,
+} as const;
 
 // ─── Враги ────────────────────────────────────────────────────────────────
 export const ENEMIES: Record<string, EnemyDef> = {
