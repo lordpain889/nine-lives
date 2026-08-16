@@ -61,6 +61,6 @@ export const cathedralZone: ZoneDef = {
     bgColor: '#0d0a14',
     tint: { color: 0x6b3fa0, alpha: 0.12 },
     fogDensity: 1,
-    particles: ['dust', 'embers'],
+    particles: ['dust', 'embers', 'ash'],
   },
 };

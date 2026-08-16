@@ -22,6 +22,7 @@ export class Cardinal extends Phaser.Physics.Arcade.Sprite implements Damageable
   private targetX = 0;
   private targetY = 0;
   private beamLine: Phaser.GameObjects.Graphics | null = null;
+  private teleporting = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'boss');
@@ -47,6 +48,7 @@ export class Cardinal extends Phaser.Physics.Arcade.Sprite implements Damageable
     this.scene.registry.set('bossName', CARDINAL.nameRu);
     this.scene.registry.set('bossHp', this.hp);
     this.scene.registry.set('bossMaxHp', CARDINAL.hp);
+    (this.scene as Phaser.Scene & { bossIntro?: (n: string) => void }).bossIntro?.(CARDINAL.nameRu);
   }
 
   update(player: Player): void {
@@ -179,6 +181,7 @@ export class Cardinal extends Phaser.Physics.Arcade.Sprite implements Damageable
   }
 
   private teleport(player: Player): void {
+    if (this.teleporting) return; // иначе вызывается каждый кадр и твины дерутся
     const scene = this.scene as unknown as WalkableScene;
     for (let i = 0; i < 10; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -186,13 +189,21 @@ export class Cardinal extends Phaser.Physics.Arcade.Sprite implements Damageable
       const tx = player.x + Math.cos(angle) * r;
       const ty = player.y + Math.sin(angle) * r;
       if (scene.isWalkable(tx, ty)) {
+        this.teleporting = true;
         this.scene.tweens.add({
           targets: this,
           alpha: 0,
           duration: 160,
           onComplete: () => {
             this.setPosition(tx, ty);
-            this.scene.tweens.add({ targets: this, alpha: 1, duration: 160 });
+            this.scene.tweens.add({
+              targets: this,
+              alpha: 1,
+              duration: 160,
+              onComplete: () => {
+                this.teleporting = false;
+              },
+            });
           },
         });
         return;

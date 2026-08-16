@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { ClassDef, EquipSlot, SaveGame } from '../types';
 import { TUNING } from '../config/gameData';
 import { itemById } from '../config/items';
+import { ATTR_BONUS } from '../systems/leveling';
 import { Damageable, knockbackFrom, hitFlash } from '../systems/combat';
 
 type Facing = 'left' | 'right' | 'up' | 'down';
@@ -94,6 +95,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
     };
     const save = this.scene.registry.get('save') as SaveGame | undefined;
     if (save) {
+      // атрибуты прокачки
+      stats.maxHp += (save.attrs?.vit ?? 0) * ATTR_BONUS.vit.hp;
+      stats.maxStamina += (save.attrs?.end ?? 0) * ATTR_BONUS.end.stamina;
+      stats.damage += (save.attrs?.str ?? 0) * ATTR_BONUS.str.damage;
+      stats.speed += (save.attrs?.dex ?? 0) * ATTR_BONUS.dex.speed;
+      // экипировка
       for (const slot of ['weapon', 'armor', 'charm'] as EquipSlot[]) {
         const id = save.equipment[slot];
         if (!id) continue;
@@ -129,11 +136,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
   update(time: number, delta: number): void {
     if (this.state === 'dead') return;
 
-    // диалог открыт — стоим и не реагируем на боевые клавиши
+    // диалог открыт — стоим, не бьём и не получаем урон (мир не на паузе)
     if (this.scene.registry.get('dialogOpen') as boolean) {
       this.setVelocity(0, 0);
       this.play(`${this.classDef.key}-idle`, true);
       this.setDepth(this.y);
+      this.iframesUntil = Math.max(this.iframesUntil, this.scene.time.now + 250);
       return;
     }
 
@@ -229,7 +237,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
       }
     });
 
-    this.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+    // без таймера листенер копится на каждой прерванной атаке
+    this.scene.time.delayedCall(atk.cooldownMs * 0.4 + 180, () => {
       if (this.state === 'attack') this.state = 'move';
     });
   }
@@ -248,6 +257,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
         : new Phaser.Math.Vector2(...FACING_VEC[this.facing]);
     this.setVelocity(dir.x * roll.speed, dir.y * roll.speed);
     this.play(`${this.classDef.key}-roll`);
+    this.scene.events.emit('roll-fx', { x: this.x, y: this.y });
 
     this.scene.time.delayedCall(roll.durationMs, () => {
       if (this.state === 'roll') {

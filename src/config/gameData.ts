@@ -358,7 +358,7 @@ export const STRINGS = {
   restHint: 'E — отдохнуть у алтаря',
   rested: 'алтарь принял тебя',
   soulsRecovered: 'кости возвращены',
-  controls: 'J удар  K перекат  H фляга  TAB сумка  Q журнал',
+  controls: 'J удар  K перекат  H фляга  E действие',
   victorySub: 'чума отступает. девять жизней целы.',
   backToTitle: 'ENTER — на титул',
 };

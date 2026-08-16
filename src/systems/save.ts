@@ -1,5 +1,6 @@
 import type { ClassKey, SaveGame } from '../types';
 import { STARTER_WEAPONS } from '../config/items';
+import { emptyAttrs } from './leveling';
 
 // Сейв — один ключ localStorage. Souls-подход: позиции и врагов не храним,
 // загрузка всегда ставит к чекпоинт-алтарю с полным респавном.
@@ -44,9 +45,19 @@ let backend: SaveBackend = localBackend;
 
 function migrate(raw: unknown): SaveGame | null {
   if (!raw || typeof raw !== 'object') return null;
-  const s = raw as Partial<SaveGame>;
+  const s = raw as Omit<Partial<SaveGame>, 'version'> & { version?: number };
   switch (s.version) {
-    case 1:
+    case 1: {
+      if (!s.classKey || !s.checkpoint) return null;
+      // v1 → v2: имя, уровень, атрибуты
+      const v2 = s as unknown as SaveGame;
+      v2.version = 2;
+      v2.name = v2.name ?? 'безымянный кот';
+      v2.level = v2.level ?? 1;
+      v2.attrs = v2.attrs ?? emptyAttrs();
+      return v2;
+    }
+    case 2:
       if (!s.classKey || !s.checkpoint) return null;
       return s as SaveGame;
     default:
@@ -54,11 +65,14 @@ function migrate(raw: unknown): SaveGame | null {
   }
 }
 
-export function newSave(classKey: ClassKey): SaveGame {
+export function newSave(classKey: ClassKey, name = 'безымянный кот'): SaveGame {
   const save: SaveGame = {
-    version: 1,
+    version: 2,
     profileId: crypto.randomUUID(),
     updatedAt: Date.now(),
+    name,
+    level: 1,
+    attrs: emptyAttrs(),
     classKey,
     souls: 0,
     checkpoint: { zone: 'graveyard', shrineId: 'start' },

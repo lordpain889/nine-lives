@@ -106,3 +106,29 @@ export function particleDot(path: string): void {
     return [242, 237, 228, on ? 255 : 90];
   });
 }
+
+// Полумесяц-росчерк удара 32x32 (белый — красится, ADD)
+export function slashArc(path: string): void {
+  writePixels(path, 32, 32, (x, y) => {
+    const dx = (x - 16) / 16;
+    const dy = (y - 16) / 16;
+    const r = Math.sqrt(dx * dx + dy * dy);
+    const ang = Math.atan2(dy, dx); // -PI..PI
+    // дуга: кольцо r 0.55-0.95, сектор ±55° вокруг 0 (вправо)
+    const inRing = r > 0.5 && r < 0.95;
+    const sector = Math.abs(ang) < 1.0;
+    if (!inRing || !sector) return [242, 237, 228, 0];
+    const ringT = 1 - Math.abs((r - 0.725) / 0.225); //  ярче в середине кольца
+    const angT = 1 - Math.abs(ang) / 1.0; //             ярче в центре сектора
+    const alpha = Math.round(230 * ringT * (0.35 + 0.65 * angT));
+    return [242, 237, 228, alpha];
+  });
+}
+
+// Капля дождя 2x6
+export function rainStreak(path: string): void {
+  writePixels(path, 2, 6, (x, y) => {
+    const alpha = x === 0 ? Math.round(150 * ((y + 1) / 6)) : 0;
+    return [111, 108, 138, alpha];
+  });
+}

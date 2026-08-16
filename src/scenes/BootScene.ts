@@ -27,6 +27,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fog', 'assets/fog.png');
     this.load.image('glow', 'assets/glow.png');
     this.load.image('particle', 'assets/particle.png');
+    this.load.image('slash', 'assets/slash.png');
+    this.load.image('rain', 'assets/rain.png');
     this.load.spritesheet('items', 'assets/items.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('npcs', 'assets/npcs.png', { frameWidth: 16, frameHeight: 16 });
   }

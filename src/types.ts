@@ -96,11 +96,14 @@ export interface ExitDef {
   lockedTextRu?: string;
 }
 
+// ParticleKind — единый источник в systems/atmosphere.ts
+export type ParticleKind = 'dust' | 'fireflies' | 'spores' | 'embers' | 'rain' | 'leaves' | 'ash';
+
 export interface ZoneAmbient {
   bgColor: string;
   tint?: { color: number; alpha: number };
   fogDensity: 0 | 1 | 2;
-  particles: Array<'dust' | 'fireflies' | 'spores' | 'embers'>;
+  particles: ParticleKind[];
 }
 
 export interface ZoneDef {
@@ -114,10 +117,21 @@ export interface ZoneDef {
 
 // ─── Сейв (localStorage; profileId — будущая серверная идентичность) ─────
 
+// Атрибуты прокачки (души → уровни у алтаря, как в DS)
+export interface Attrs {
+  vit: number; // живучесть: +HP
+  end: number; // выносливость: +стамина
+  str: number; // сила: +урон
+  dex: number; // ловкость: +скорость
+}
+
 export interface SaveGame {
-  version: 1;
+  version: 2;
   profileId: string;
   updatedAt: number;
+  name: string; //   никнейм кота
+  level: number;
+  attrs: Attrs;
   classKey: ClassKey;
   souls: number;
   checkpoint: { zone: ZoneKey; shrineId: string }; // 'start' = точка входа зоны

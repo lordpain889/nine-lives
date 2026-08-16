@@ -150,6 +150,6 @@ export const graveyardZone: ZoneDef = {
     bgColor: '#0d0a14',
     tint: { color: 0x1f1833, alpha: 0.1 },
     fogDensity: 1,
-    particles: ['dust'],
+    particles: ['dust', 'rain'],
   },
 };

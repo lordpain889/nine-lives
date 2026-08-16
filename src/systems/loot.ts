@@ -36,8 +36,10 @@ export function spawnPickup(
   // лёгкий подскок при выпадении
   scene.tweens.add({ targets: sprite, y: y - 5, duration: 160, yoyo: true, ease: 'Quad.easeOut' });
 
-  scene.physics.add.overlap(sprite, player, () => {
+  // коллайдер снимаем вручную — иначе они копятся в world.colliders
+  const collider = scene.physics.add.overlap(sprite, player, () => {
     if (!sprite.active) return;
+    scene.physics.world.removeCollider(collider);
     sprite.disableBody(true, false);
     const save = scene.registry.get('save') as SaveGame;
     addItem(save.inventory, id, qty);

@@ -16,7 +16,7 @@ import { buildFontFrames } from './defs/font';
 import { FONT_CHARS_PER_ROW, FONT_CELL_W, FONT_CELL_H } from './defs/fontCharset';
 import { itemFrames } from './defs/items';
 import { npcFrames } from './defs/npcs';
-import { vignette, fog, glow, particleDot } from './procedural';
+import { vignette, fog, glow, particleDot, slashArc, rainStreak } from './procedural';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
@@ -59,5 +59,7 @@ vignette(join(OUT, 'vignette.png'));
 fog(join(OUT, 'fog.png'));
 glow(join(OUT, 'glow.png'));
 particleDot(join(OUT, 'particle.png'));
+slashArc(join(OUT, 'slash.png'));
+rainStreak(join(OUT, 'rain.png'));
 
 console.log('Done.');

@@ -4,13 +4,10 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 // Атмосфера зоны: виньетка, дрейфующий туман, свечение огней, частицы.
 // Всё конфигурируется из ZoneDef.ambient (зонная система — V2-M4).
 
-export type ParticleKind = 'dust' | 'fireflies' | 'spores' | 'embers';
+import type { ParticleKind, ZoneAmbient } from '../types';
 
-export interface AmbientConfig {
-  tint?: { color: number; alpha: number };
-  fogDensity: 0 | 1 | 2;
-  particles: ParticleKind[];
-}
+export type { ParticleKind };
+export type AmbientConfig = ZoneAmbient;
 
 const FOG_ALPHA: Record<number, [number, number]> = {
   0: [0, 0],
@@ -125,6 +122,48 @@ export class Atmosphere {
             frequency: 600,
             tint: 0xc96b2e,
             blendMode: Phaser.BlendModes.ADD,
+          })
+          .setDepth(9200);
+        break;
+      case 'rain':
+        this.scene.add
+          .particles(0, 0, 'rain', {
+            emitZone: zone,
+            lifespan: 900,
+            speedY: { min: 120, max: 170 },
+            speedX: { min: -18, max: -10 },
+            alpha: { values: [0, 0.5, 0.4, 0] },
+            quantity: 2,
+            frequency: 40,
+          })
+          .setDepth(9250);
+        break;
+      case 'leaves':
+        this.scene.add
+          .particles(0, 0, 'particle', {
+            emitZone: zone,
+            lifespan: 5000,
+            speedY: { min: 8, max: 18 },
+            speedX: { min: -22, max: -6 },
+            alpha: { values: [0, 0.7, 0] },
+            rotate: { start: 0, end: 360 },
+            quantity: 1,
+            frequency: 500,
+            tint: [0x3e7a4e, 0x1f1833, 0xc96b2e],
+          })
+          .setDepth(9200);
+        break;
+      case 'ash':
+        this.scene.add
+          .particles(0, 0, 'particle', {
+            emitZone: zone,
+            lifespan: 6000,
+            speedY: { min: 4, max: 12 },
+            speedX: { min: -6, max: 6 },
+            alpha: { values: [0, 0.4, 0] },
+            quantity: 1,
+            frequency: 300,
+            tint: 0xa89f94,
           })
           .setDepth(9200);
         break;

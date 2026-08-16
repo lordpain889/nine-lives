@@ -12,6 +12,7 @@ import type { GameScene } from './GameScene';
 
 const COLS = 6;
 const ROWS = 4;
+const PAGE_SIZE = COLS * ROWS;
 const CELL = 20;
 const GRID_X = 18;
 const GRID_Y = 40;
@@ -22,6 +23,8 @@ const SLOT_LABELS = ['оружие', 'броня', 'амулет'];
 
 export class InventoryScene extends Phaser.Scene {
   private save!: SaveGame;
+  private page = 0; //    страница сетки (инвентарь не ограничен 24 слотами)
+  private pageText!: Phaser.GameObjects.BitmapText;
   private cursor = 0; //  0..23 грид; 24..26 экипировка
   private cursorImg!: Phaser.GameObjects.Image;
   private gridIcons: Phaser.GameObjects.Image[] = [];
@@ -39,12 +42,14 @@ export class InventoryScene extends Phaser.Scene {
   create(): void {
     this.save = this.registry.get('save') as SaveGame;
     this.cursor = 0;
+    this.page = 0;
 
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0d0a14, 0.82).setOrigin(0);
     uiText(this, GAME_WIDTH / 2, 14, 'инвентарь', UI.gold, 2).setOrigin(0.5);
+    this.pageText = uiText(this, GRID_X, 26, '', UI.fog);
 
     // сетка предметов
-    addPanel(this, GRID_X - 8, GRID_Y - 8, COLS * CELL + 16, ROWS * CELL + 16);
+    addPanel(this, GRID_X - 8, GRID_Y - 8, COLS * CELL + 16, ROWS * CELL + 12);
     this.gridIcons = [];
     this.gridQty = [];
     for (let i = 0; i < COLS * ROWS; i++) {
@@ -64,11 +69,11 @@ export class InventoryScene extends Phaser.Scene {
     });
     this.statsText = uiText(this, EQUIP_X - 4, EQUIP_Y[2] + 18, '', UI.bone);
 
-    // тултип
-    addPanel(this, 10, 134, GAME_WIDTH - 20, 38);
-    this.tipName = uiText(this, 18, 140, '', UI.gold);
-    this.tipDesc = uiText(this, 18, 150, '', UI.fog);
-    this.tipStats = uiText(this, 18, 160, '', UI.green);
+    // тултип (3 строки лора + строка статов)
+    addPanel(this, 10, 122, GAME_WIDTH - 20, 52);
+    this.tipName = uiText(this, 18, 127, '', UI.gold);
+    this.tipDesc = uiText(this, 18, 138, '', UI.fog);
+    this.tipStats = uiText(this, 18, 165, '', UI.green);
 
     this.cursorImg = this.add.image(0, 0, 'ui', 8);
 
@@ -78,6 +83,8 @@ export class InventoryScene extends Phaser.Scene {
     kb.on('keydown-UP', () => this.move(0, -1));
     kb.on('keydown-DOWN', () => this.move(0, 1));
     kb.on('keydown-ENTER', () => this.activate());
+    kb.on('keydown-OPEN_BRACKET', () => this.flipPage(-1));
+    kb.on('keydown-CLOSED_BRACKET', () => this.flipPage(1));
     const close = (ev?: KeyboardEvent) => {
       ev?.preventDefault?.();
       this.scene.stop();
@@ -119,11 +126,24 @@ export class InventoryScene extends Phaser.Scene {
     this.refresh();
   }
 
+  private flipPage(dir: number): void {
+    this.page = Phaser.Math.Wrap(this.page + dir, 0, this.pageCount());
+    this.refresh();
+  }
+
+  private slotIndex(cursor: number): number {
+    return this.page * PAGE_SIZE + cursor;
+  }
+
+  private pageCount(): number {
+    return Math.max(1, Math.ceil(this.save.inventory.length / PAGE_SIZE));
+  }
+
   private selectedItemId(): string | null {
-    if (this.cursor < COLS * ROWS) {
-      return this.save.inventory[this.cursor]?.id ?? null;
+    if (this.cursor < PAGE_SIZE) {
+      return this.save.inventory[this.slotIndex(this.cursor)]?.id ?? null;
     }
-    return this.save.equipment[SLOTS[this.cursor - COLS * ROWS]];
+    return this.save.equipment[SLOTS[this.cursor - PAGE_SIZE]];
   }
 
   private activate(): void {
@@ -141,6 +161,7 @@ export class InventoryScene extends Phaser.Scene {
     }
 
     if (def.type !== 'weapon' && def.type !== 'armor' && def.type !== 'charm') return;
+    // страничный курсор → реальный индекс в инвентаре
     if (def.classKey && def.classKey !== this.save.classKey) {
       setUiText(this.tipStats, 'не для твоего класса');
       this.tipStats.setTint(UI.blood);
@@ -162,13 +183,18 @@ export class InventoryScene extends Phaser.Scene {
   }
 
   private refresh(): void {
-    // грид
-    for (let i = 0; i < COLS * ROWS; i++) {
-      const entry = this.save.inventory[i];
+    // грид (с учётом страницы)
+    this.page = Phaser.Math.Clamp(this.page, 0, this.pageCount() - 1);
+    for (let i = 0; i < PAGE_SIZE; i++) {
+      const entry = this.save.inventory[this.slotIndex(i)];
       this.gridIcons[i].setVisible(!!entry);
       if (entry) this.gridIcons[i].setFrame(itemById(entry.id).frame);
       setUiText(this.gridQty[i], entry && entry.qty > 1 ? String(entry.qty) : '');
     }
+    setUiText(
+      this.pageText,
+      this.pageCount() > 1 ? `страница ${this.page + 1}/${this.pageCount()}  ([ ] листать)` : '',
+    );
     // экипировка
     SLOTS.forEach((slot, i) => {
       const id = this.save.equipment[slot];
@@ -202,7 +228,7 @@ export class InventoryScene extends Phaser.Scene {
     }
     const def = itemById(id);
     setUiText(this.tipName, def.nameRu);
-    setUiText(this.tipDesc, def.descRu.replace(/\n/g, ' '));
+    setUiText(this.tipDesc, def.descRu);
     const mods: string[] = [];
     if (def.stats?.damage) mods.push(`атк ${def.stats.damage > 0 ? '+' : ''}${def.stats.damage}`);
     if (def.stats?.hp) mods.push(`хп ${def.stats.hp > 0 ? '+' : ''}${def.stats.hp}`);

@@ -26,6 +26,9 @@ export class DialogBox {
   private page = 0;
   private choiceIdx = 0;
   private keys: Phaser.Input.Keyboard.Key[] = [];
+  private onEnter: (() => void) | null = null;
+  private onUp: (() => void) | null = null;
+  private onDown: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -52,16 +55,21 @@ export class DialogBox {
     this.nameText.setScrollFactor(0);
     this.pageText.setScrollFactor(0);
 
+    // ВАЖНО: kb.addKey возвращает УЖЕ существующий Key (тот же объект, что у
+    // Player/GameScene). Удалять его через removeKey нельзя — навсегда убьёт
+    // клавишу для всей сцены. Поэтому только addListener/removeAllListeners.
     const kb = this.scene.input.keyboard!;
     const K = Phaser.Input.Keyboard.KeyCodes;
     const enter = kb.addKey(K.ENTER, false);
     const up = kb.addKey(K.UP, false);
     const down = kb.addKey(K.DOWN, false);
-    const esc = kb.addKey(K.E, false);
-    this.keys = [enter, up, down, esc];
-    enter.on('down', () => this.advance());
-    up.on('down', () => this.moveChoice(-1));
-    down.on('down', () => this.moveChoice(1));
+    this.keys = [enter, up, down];
+    this.onEnter = () => this.advance();
+    this.onUp = () => this.moveChoice(-1);
+    this.onDown = () => this.moveChoice(1);
+    enter.on('down', this.onEnter);
+    up.on('down', this.onUp);
+    down.on('down', this.onDown);
 
     this.renderPage();
   }
@@ -131,11 +139,13 @@ export class DialogBox {
   }
 
   close(): void {
-    this.keys.forEach((k) => {
-      k.removeAllListeners();
-      this.scene.input.keyboard!.removeKey(k);
-    });
+    if (!this.container) return;
+    const [enter, up, down] = this.keys;
+    if (enter && this.onEnter) enter.off('down', this.onEnter);
+    if (up && this.onUp) up.off('down', this.onUp);
+    if (down && this.onDown) down.off('down', this.onDown);
     this.keys = [];
+    this.onEnter = this.onUp = this.onDown = null;
     this.clearChoices();
     this.container?.destroy(true);
     this.container = null;

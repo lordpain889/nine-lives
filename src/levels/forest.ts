@@ -94,6 +94,6 @@ export const forestZone: ZoneDef = {
     bgColor: '#0d0a14',
     tint: { color: 0x3e7a4e, alpha: 0.12 },
     fogDensity: 2,
-    particles: ['dust', 'fireflies'],
+    particles: ['dust', 'fireflies', 'leaves'],
   },
 };

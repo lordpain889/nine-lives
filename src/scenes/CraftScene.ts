@@ -27,7 +27,12 @@ export class CraftScene extends Phaser.Scene {
 
   create(): void {
     this.save = this.registry.get('save') as SaveGame;
-    this.recipes = RECIPES.filter((r) => r.vendor === this.vendor);
+    // класс-локнутые вещи чужого класса не показываем — их нельзя надеть
+    this.recipes = RECIPES.filter((r) => {
+      if (r.vendor !== this.vendor) return false;
+      const lock = itemById(r.resultId).classKey;
+      return !lock || lock === this.save.classKey;
+    });
     this.cursor = 0;
 
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0d0a14, 0.82).setOrigin(0);

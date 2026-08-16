@@ -40,8 +40,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
 
     switch (this.enemyState) {
       case 'patrol': {
-        // туда-сюда вокруг точки спавна
-        if (Math.abs(this.x - (this.homeX + this.patrolDir * 20)) < 3) this.patrolDir *= -1;
+        // туда-сюда вокруг точки спавна; за границей — разворот к дому
+        // (иначе после погони/нокбека враг уходит в стену навсегда)
+        if (this.x > this.homeX + 20) this.patrolDir = -1;
+        else if (this.x < this.homeX - 20) this.patrolDir = 1;
+        else if (Math.abs(this.x - (this.homeX + this.patrolDir * 20)) < 3) this.patrolDir *= -1;
         this.setVelocity(this.patrolDir * this.def.speed * 0.4, 0);
         this.setFlipX(this.patrolDir < 0);
         this.play(`${this.def.key}-walk`, true);

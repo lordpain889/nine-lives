@@ -19,8 +19,9 @@ import { zoneByKey } from '../levels';
 import { spawnMeleeHitbox } from '../systems/combat';
 import { Atmosphere } from '../systems/atmosphere';
 import { rollDrops } from '../systems/loot';
+import { slash, hitSparks, deathBurst, rollDust } from '../systems/effects';
 import { newSave, persist, setFlag, hasFlag } from '../systems/save';
-import { addItem } from '../config/items';
+import { addItem, itemById } from '../config/items';
 import { SpiritEnemy } from '../entities/SpiritEnemy';
 import { Cardinal } from '../entities/Cardinal';
 import {
@@ -34,6 +35,7 @@ import {
 } from '../systems/quests';
 import type { QuestDef } from '../config/quests';
 import { DialogBox } from '../ui/DialogBox';
+import { NPC_CHATTER, SHRINE_LINES, DEATH_LINES } from '../config/lore';
 import { uiText, UI } from '../ui/text';
 import type { DropDef, SaveGame, ZoneDef, ZoneKey } from '../types';
 
@@ -43,6 +45,8 @@ const NPC_RADIUS = 20;
 interface GameSceneData {
   zone?: ZoneKey;
   spawnTile?: { x: number; y: number };
+  // состояние переносится между зонами: переход НЕ должен лечить
+  carry?: { hp: number; stamina: number; flasks: number };
 }
 
 export class GameScene extends Phaser.Scene {
@@ -69,6 +73,8 @@ export class GameScene extends Phaser.Scene {
   private atmosphere!: Atmosphere;
   private save!: SaveGame;
   private spawnTileOverride: { x: number; y: number } | null = null;
+  private carry: { hp: number; stamina: number; flasks: number } | null = null;
+  private chatterIdx: Record<string, number> = {};
 
   constructor() {
     super('game');
@@ -76,6 +82,7 @@ export class GameScene extends Phaser.Scene {
 
   init(data: GameSceneData): void {
     this.spawnTileOverride = data?.spawnTile ?? null;
+    this.carry = data?.carry ?? null;
     if (data?.zone) this.registry.set('currentZone', data.zone);
   }
 
@@ -106,7 +113,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── состояние забега ──
     this.registry.set('souls', this.save.souls);
-    this.registry.set('flasks', TUNING.flasks);
+    this.registry.set('flasks', this.carry ? this.carry.flasks : TUNING.flasks);
     this.registry.set(
       'pendingDrop',
       this.save.droppedSouls && this.save.droppedSouls.zone === zoneKey
@@ -151,6 +158,12 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.player = new Player(this, spawn.x, spawn.y, classByKey(this.save.classKey));
+    // переход между зонами сохраняет HP/стамину (иначе зоны = бесплатный хил)
+    if (this.carry) {
+      this.player.hp = Math.min(this.player.stats.maxHp, this.carry.hp);
+      this.player.stamina = Math.min(this.player.stats.maxStamina, this.carry.stamina);
+      this.player.recomputeStats();
+    }
     this.physics.add.collider(this.player, this.layer);
     this.dialog = new DialogBox(this);
 
@@ -240,6 +253,7 @@ export class GameScene extends Phaser.Scene {
     // ── события боёвки ──
     this.events.on('player-melee', (e: { x: number; y: number; damage: number }) => {
       spawnMeleeHitbox(this, this.playerHitboxes, e.x, e.y, 16, 16, e.damage);
+      slash(this, e.x, e.y, Math.atan2(e.y - this.player.y, e.x - this.player.x), 0xf2ede4);
     });
     this.events.on(
       'player-cast',
@@ -253,6 +267,7 @@ export class GameScene extends Phaser.Scene {
         const zone = spawnMeleeHitbox(this, this.enemyHitboxes, e.x, e.y, 18, 18, e.damage, 150);
         zone.setData('fromX', e.fromX);
         zone.setData('fromY', e.fromY);
+        slash(this, e.x, e.y, Math.atan2(e.y - e.fromY, e.x - e.fromX), 0x8c2233);
       },
     );
     this.events.on(
@@ -273,6 +288,7 @@ export class GameScene extends Phaser.Scene {
       (e: { key?: string; soulValue: number; x: number; y: number; drops?: DropDef[] }) => {
         this.registry.set('souls', ((this.registry.get('souls') as number) ?? 0) + e.soulValue);
         this.save.stats.kills += 1;
+        deathBurst(this, e.x, e.y);
         rollDrops(this, this.player, e.drops, e.x, e.y);
         if (e.key) {
           const doneName = onEnemyKilled(this.save, e.key);
@@ -295,11 +311,13 @@ export class GameScene extends Phaser.Scene {
       }
     });
     this.events.on('loot-picked', () => this.persistNow());
+    this.events.on('roll-fx', (e: { x: number; y: number }) => rollDust(this, e.x, e.y));
     this.events.on('player-died', () => this.onPlayerDied());
 
-    // всплывающие цифры урона
+    // всплывающие цифры урона + искры в точке попадания
     this.events.on('float-text', (e: { x: number; y: number; text: string; tint: number }) => {
-      const t = uiText(this, e.x, e.y, e.text, e.tint).setOrigin(0.5).setDepth(9000);
+      if (/^\d+$/.test(e.text)) hitSparks(this, e.x, e.y + 6, e.tint, 6);
+      const t = uiText(this, e.x, e.y, e.text, e.tint).setOrigin(0.5).setDepth(9600);
       this.tweens.add({
         targets: t,
         y: e.y - 14,
@@ -327,6 +345,7 @@ export class GameScene extends Phaser.Scene {
     this.events.on('boss-defeated', (e: { boss: string }) => {
       if (e.boss === 'warden') {
         setFlag(this.save, 'warden_dead');
+        this.registry.set('bossDefeated', true); // иначе респавнится у алтаря
         addItem(this.save.inventory, 'warden_heart');
         this.events.emit('float-text', {
           x: this.player.x,
@@ -339,6 +358,12 @@ export class GameScene extends Phaser.Scene {
       } else {
         setFlag(this.save, 'cardinal_dead');
         addItem(this.save.inventory, 'cardinal_relic');
+        // финал начинается сразу — сдать q7 некому, выдаём награду здесь
+        const q7 = this.save.quests['q7_cardinal'];
+        if (q7 && q7.state !== 'turnedIn') {
+          q7.state = 'turnedIn';
+          this.registry.set('souls', ((this.registry.get('souls') as number) ?? 0) + 500);
+        }
         this.persistNow();
         this.onCardinalDefeated();
       }
@@ -379,7 +404,7 @@ export class GameScene extends Phaser.Scene {
       for (const ev of [
         'player-melee', 'player-cast', 'enemy-melee', 'enemy-cast', 'enemy-lob', 'enemy-died',
         'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated', 'float-text', 'loot-picked',
-        'pack-aggro', 'cardinal-bolt', 'cardinal-summon', 'cardinal-beam-seg',
+        'pack-aggro', 'cardinal-bolt', 'cardinal-summon', 'cardinal-beam-seg', 'roll-fx',
       ]) {
         this.events.off(ev);
       }
@@ -446,9 +471,14 @@ export class GameScene extends Phaser.Scene {
   private startTransition(toZone: ZoneKey, spawnTile: { x: number; y: number }): void {
     this.transitioning = true;
     this.persistNow();
+    const carry = {
+      hp: this.player.hp,
+      stamina: this.player.stamina,
+      flasks: (this.registry.get('flasks') as number) ?? TUNING.flasks,
+    };
     this.cameras.main.fadeOut(350, 13, 10, 20);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.restart({ zone: toZone, spawnTile });
+      this.scene.restart({ zone: toZone, spawnTile, carry });
     });
   }
 
@@ -468,7 +498,7 @@ export class GameScene extends Phaser.Scene {
         this.enemies.add(new SpiritEnemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES.spirit));
       } else if (ENEMIES[s.type]) {
         this.enemies.add(new Enemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES[s.type]));
-      } else if (s.type === 'boss' && !(this.registry.get('bossDefeated') as boolean)) {
+      } else if (s.type === 'boss' && !hasFlag(this.save, 'warden_dead')) {
         this.boss = new MiniBoss(this, s.x * 16 + 8, s.y * 16 + 8);
         this.enemies.add(this.boss);
         this.registry.set('bossActive', false);
@@ -550,6 +580,26 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ── алтарь: меню (отдых / развитие) ──
+  private openShrineMenu(shrineIdx: number): void {
+    const line = SHRINE_LINES[(shrineIdx + this.save.stats.deaths) % SHRINE_LINES.length];
+    this.dialog.open({
+      name: 'алтарь девяти',
+      pages: [line],
+      choices: [
+        { label: 'отдохнуть', cb: () => this.restAtShrine(shrineIdx) },
+        {
+          label: 'развитие',
+          cb: () => {
+            this.scene.pause();
+            this.scene.launch('levelup');
+          },
+        },
+        { label: 'уйти', cb: () => undefined },
+      ],
+    });
+  }
+
   // ── алтарь ──
   private restAtShrine(shrineIdx: number): void {
     this.registry.set('flasks', TUNING.flasks);
@@ -581,20 +631,24 @@ export class GameScene extends Phaser.Scene {
   private talkTo(npc: Npc): void {
     const pending = pendingQuest(this.save, npc.kind);
 
-    // 1. сдать выполненный квест
+    // 1. сдать выполненный квест — только по согласию (collect ест материалы!)
     if (pending && isQuestDone(this.save, pending)) {
-      turnInQuest(this.save, pending);
-      const souls = ((this.registry.get('souls') as number) ?? 0) + (pending.rewards.souls ?? 0);
-      this.registry.set('souls', souls);
-      this.persistNow();
+      const cost =
+        pending.type === 'collect'
+          ? `\n(отдашь ${pending.count} шт: ${itemById(pending.target).nameRu})`
+          : '';
       const rewardBits = [
-        pending.rewards.souls ? `+${pending.rewards.souls} костей` : '',
-        ...(pending.rewards.items ?? []).map((i) => `+${i.qty > 1 ? `${i.qty} ` : ''}предмет`),
+        pending.rewards.souls ? `${pending.rewards.souls} костей` : '',
+        ...(pending.rewards.items ?? []).map((i) => itemById(i.id).nameRu),
       ].filter(Boolean);
       this.dialog.open({
         name: npc.nameRu,
-        pages: [...pending.dialog.complete, `награда: ${rewardBits.join(', ') || 'благодарность'}`],
-        choices: [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }],
+        pages: [`${pending.nameRu} — готово.\nнаграда: ${rewardBits.join(', ') || 'благодарность'}${cost}`],
+        choices: [
+          { label: 'сдать', cb: () => this.turnInFlow(npc, pending) },
+          { label: 'позже', cb: () => undefined },
+          ...this.craftChoice(npc),
+        ],
       });
       return;
     }
@@ -624,19 +678,31 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // 4. обычная болтовня
-    const chatter: Record<string, string[]> = {
-      blacksmith: ['металл здесь гниёт, как всё живое.\nно я ещё держу молот.'],
-      merchant: ['кости — единственная валюта,\nкоторой я верю, котик.'],
-      quartermaster: ['город держится, пока горят фонари.\nне дай им погаснуть.'],
-    };
+    // 4. болтовня — по кругу из лор-набора
+    const lines = NPC_CHATTER[npc.kind] ?? [['...']];
+    const idx = this.chatterIdx[npc.kind] ?? 0;
+    this.chatterIdx[npc.kind] = (idx + 1) % lines.length;
     this.dialog.open({
       name: npc.nameRu,
-      pages: chatter[npc.kind],
+      pages: lines[idx],
       choices: this.craftChoice(npc).length
         ? [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }]
         : undefined,
     });
+  }
+
+  private turnInFlow(npc: Npc, quest: QuestDef): void {
+    turnInQuest(this.save, quest);
+    const souls = ((this.registry.get('souls') as number) ?? 0) + (quest.rewards.souls ?? 0);
+    this.registry.set('souls', souls);
+    this.persistNow();
+    this.time.delayedCall(200, () =>
+      this.dialog.open({
+        name: npc.nameRu,
+        pages: quest.dialog.complete,
+        choices: [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }],
+      }),
+    );
   }
 
   private acceptQuestFlow(quest: QuestDef): void {
@@ -652,8 +718,9 @@ export class GameScene extends Phaser.Scene {
 
   // ── смерть и возрождение ──
   private onPlayerDied(): void {
-    if (this.dying) return;
+    if (this.dying || this.transitioning) return; // смерть в переходе — игнор
     this.dying = true;
+    this.dialog.close(); // иначе после воскрешения игрок заморожен
 
     const zoneKey = this.registry.get('currentZone') as ZoneKey;
     const souls = (this.registry.get('souls') as number) ?? 0;
@@ -664,12 +731,24 @@ export class GameScene extends Phaser.Scene {
       souls > 0 ? { zone: zoneKey, x: this.player.x, y: this.player.y, amount: souls } : null;
     this.persistNow();
 
-    const text = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, STRINGS.youDied, UI.blood, 3)
+    const text = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 6, STRINGS.youDied, UI.blood, 3)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(10000)
       .setAlpha(0);
-    this.tweens.add({ targets: text, alpha: 1, duration: 900 });
+    const sub = uiText(
+      this,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 16,
+      DEATH_LINES[this.save.stats.deaths % DEATH_LINES.length],
+      UI.fog,
+    )
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(10000)
+      .setAlpha(0);
+    this.tweens.add({ targets: [text, sub], alpha: 1, duration: 900 });
+    this.cameras.main.zoomTo(1.08, 900, 'Sine.easeOut');
 
     this.time.delayedCall(2200, () => {
       this.cameras.main.fadeOut(400, 13, 10, 20);
@@ -680,6 +759,8 @@ export class GameScene extends Phaser.Scene {
           return;
         }
         text.destroy();
+        sub.destroy();
+        this.cameras.main.zoomTo(1, 1);
         const cp = this.registry.get('checkpoint') as { x: number; y: number };
         this.player.revive(cp.x, cp.y);
         this.registry.set('flasks', TUNING.flasks);
@@ -704,7 +785,10 @@ export class GameScene extends Phaser.Scene {
     sprite.setDepth(drop.y);
     (sprite.body as Phaser.Physics.Arcade.Body).setSize(14, 14);
     this.soulDrop = sprite;
+    // если умер на чекпоинте — не подбирать мгновенно при воскрешении
+    let armed = Phaser.Math.Distance.Between(drop.x, drop.y, this.player.x, this.player.y) > 24;
     this.physics.add.overlap(sprite, this.player, () => {
+      if (!armed) return;
       this.registry.set('souls', ((this.registry.get('souls') as number) ?? 0) + drop.amount);
       this.registry.set('pendingDrop', null);
       this.save.droppedSouls = null;
@@ -712,6 +796,21 @@ export class GameScene extends Phaser.Scene {
       sprite.destroy();
       this.soulDrop = null;
       this.showBanner(`${STRINGS.soulsRecovered}: ${drop.amount}`, UI.cyan);
+    });
+    // взводим подбор, когда игрок отошёл от места смерти
+    const armTimer = this.time.addEvent({
+      delay: 200,
+      loop: true,
+      callback: () => {
+        if (!sprite.active) {
+          armTimer.remove();
+          return;
+        }
+        if (!armed && Phaser.Math.Distance.Between(sprite.x, sprite.y, this.player.x, this.player.y) > 26) {
+          armed = true;
+          armTimer.remove();
+        }
+      },
     });
   }
 
@@ -771,6 +870,44 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard!.once('keydown-ENTER', () => {
         this.scene.stop('hud');
         this.scene.start('title');
+      });
+    });
+  }
+
+  // ── интро босса в духе DS: чёрные полосы + имя ──
+  bossIntro(name: string): void {
+    const cy = GAME_HEIGHT / 2;
+    const barTop = this.add
+      .rectangle(0, cy - 26, GAME_WIDTH, 0, 0x0d0a14, 0.85)
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(9800);
+    const barBottom = this.add
+      .rectangle(0, cy + 26, GAME_WIDTH, 0, 0x0d0a14, 0.85)
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(9800);
+    const label = uiText(this, GAME_WIDTH / 2, cy - 4, name, UI.blood, 2)
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(9810)
+      .setAlpha(0);
+    const line = this.add
+      .rectangle(GAME_WIDTH / 2, cy + 12, 4, 1, 0x8c2233, 1)
+      .setScrollFactor(0)
+      .setDepth(9810);
+
+    this.tweens.add({ targets: [barTop, barBottom], height: 30, duration: 350, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: label, alpha: 1, duration: 500, delay: 250 });
+    this.tweens.add({ targets: line, width: 180, duration: 700, delay: 350, ease: 'Cubic.easeOut' });
+    this.cameras.main.zoomTo(1.12, 400, 'Sine.easeOut');
+    this.time.delayedCall(2100, () => {
+      this.cameras.main.zoomTo(1, 500, 'Sine.easeInOut');
+      this.tweens.add({
+        targets: [label, line, barTop, barBottom],
+        alpha: 0,
+        duration: 500,
+        onComplete: () => [label, line, barTop, barBottom].forEach((o) => o.destroy()),
       });
     });
   }
@@ -837,7 +974,7 @@ export class GameScene extends Phaser.Scene {
       );
       if (nearShrine >= 0) {
         this.registry.set('hint', STRINGS.restHint);
-        if (Phaser.Input.Keyboard.JustDown(this.keyE)) this.restAtShrine(nearShrine);
+        if (Phaser.Input.Keyboard.JustDown(this.keyE)) this.openShrineMenu(nearShrine);
       } else if (nearNpc) {
         this.registry.set('hint', `E — ${nearNpc.nameRu}`);
         if (Phaser.Input.Keyboard.JustDown(this.keyE)) this.talkTo(nearNpc);

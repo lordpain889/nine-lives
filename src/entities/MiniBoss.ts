@@ -42,6 +42,7 @@ export class MiniBoss extends Phaser.Physics.Arcade.Sprite implements Damageable
       this.scene.registry.set('bossName', BOSS.nameRu);
       this.scene.registry.set('bossHp', this.hp);
       this.scene.registry.set('bossMaxHp', BOSS.hp);
+      (this.scene as Phaser.Scene & { bossIntro?: (n: string) => void }).bossIntro?.(BOSS.nameRu);
     }
   }
 
