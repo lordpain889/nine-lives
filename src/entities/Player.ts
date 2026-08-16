@@ -217,6 +217,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
   takeHit(damage: number, fromX: number, fromY: number): void {
     if (this.state === 'dead' || this.isInvulnerable) return;
     this.hp = Math.max(0, this.hp - damage);
+    this.scene.events.emit('float-text', { x: this.x, y: this.y - 12, text: String(damage), tint: 0x8c2233 });
     this.iframesUntil = this.scene.time.now + TUNING.playerIframesAfterHitMs;
     this.syncHud();
     hitFlash(this.scene, this);

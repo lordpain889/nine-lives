@@ -7,6 +7,7 @@ import { classByKey, COLLIDING_TILES, ENEMIES, STRINGS, TUNING } from '../config
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { buildGraveyard, SPAWNS } from '../levels/graveyard';
 import { spawnMeleeHitbox } from '../systems/combat';
+import { uiText, UI } from '../ui/text';
 
 const SHRINE_RADIUS = 22;
 
@@ -151,6 +152,19 @@ export class GameScene extends Phaser.Scene {
     });
     this.events.on('player-died', () => this.onPlayerDied());
 
+    // всплывающие цифры урона
+    this.events.on('float-text', (e: { x: number; y: number; text: string; tint: number }) => {
+      const t = uiText(this, e.x, e.y, e.text, e.tint).setOrigin(0.5).setDepth(9000);
+      this.tweens.add({
+        targets: t,
+        y: e.y - 14,
+        alpha: 0,
+        duration: 600,
+        ease: 'Cubic.easeOut',
+        onComplete: () => t.destroy(),
+      });
+    });
+
     // ── атаки босса ──
     this.events.on(
       'boss-swipe',
@@ -171,7 +185,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const ev of [
         'player-melee', 'player-cast', 'enemy-melee', 'enemy-cast',
-        'enemy-died', 'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated',
+        'enemy-died', 'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated', 'float-text',
       ]) {
         this.events.off(ev);
       }
@@ -230,7 +244,7 @@ export class GameScene extends Phaser.Scene {
     this.player.revive(this.player.x, this.player.y);
     this.spawnEnemies(); // отдых воскрешает мир
     this.cameras.main.flash(400, 201, 162, 39, false);
-    this.showBanner(STRINGS.rested, '#c9a227');
+    this.showBanner(STRINGS.rested, UI.gold);
   }
 
   // ── смерть и возрождение ──
@@ -242,13 +256,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set('pendingDrop', souls > 0 ? { x: this.player.x, y: this.player.y, amount: souls } : null);
     this.registry.set('souls', 0);
 
-    const text = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, STRINGS.youDied, {
-        fontFamily: 'monospace',
-        fontSize: '22px',
-        color: '#8c2233',
-        fontStyle: 'bold',
-      })
+    const text = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, STRINGS.youDied, UI.blood, 3)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(10000)
@@ -288,7 +296,7 @@ export class GameScene extends Phaser.Scene {
       this.registry.set('pendingDrop', null);
       sprite.destroy();
       this.soulDrop = null;
-      this.showBanner(`${STRINGS.soulsRecovered}: ${drop.amount}`, '#4fa4b8');
+      this.showBanner(`${STRINGS.soulsRecovered}: ${drop.amount}`, UI.cyan);
     });
   }
 
@@ -302,18 +310,17 @@ export class GameScene extends Phaser.Scene {
         .setDepth(9999);
       this.tweens.add({ targets: overlay, fillAlpha: 0.75, duration: 900 });
 
-      const mk = (y: number, msg: string, size: string, color: string) =>
-        this.add
-          .text(GAME_WIDTH / 2, y, msg, { fontFamily: 'monospace', fontSize: size, color, fontStyle: size === '20px' ? 'bold' : 'normal' })
+      const mk = (y: number, msg: string, tint: number, scale = 1) =>
+        uiText(this, GAME_WIDTH / 2, y, msg, tint, scale)
           .setOrigin(0.5)
           .setScrollFactor(0)
           .setDepth(10000)
           .setAlpha(0);
 
-      const t1 = mk(66, STRINGS.victory, '20px', '#c9a227');
-      const t2 = mk(92, STRINGS.victorySub, '8px', '#6f6c8a');
-      const t3 = mk(112, `${STRINGS.souls}: ${(this.registry.get('souls') as number) ?? 0}`, '8px', '#4fa4b8');
-      const t4 = mk(140, STRINGS.backToTitle, '8px', '#d8cfc0');
+      const t1 = mk(66, STRINGS.victory, UI.gold, 2);
+      const t2 = mk(92, STRINGS.victorySub, UI.fog);
+      const t3 = mk(112, `${STRINGS.souls}: ${(this.registry.get('souls') as number) ?? 0}`, UI.cyan);
+      const t4 = mk(140, STRINGS.backToTitle, UI.bone);
       this.tweens.add({ targets: [t1, t2, t3, t4], alpha: 1, duration: 900, delay: 400 });
 
       this.input.keyboard!.once('keydown-ENTER', () => {
@@ -323,13 +330,8 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private showBanner(msg: string, color: string): void {
-    const banner = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, msg, {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color,
-      })
+  private showBanner(msg: string, tint: number): void {
+    const banner = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT - 30, msg, tint)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(10000);

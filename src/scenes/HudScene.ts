@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { STRINGS, UI_FRAMES, BOSS } from '../config/gameData';
+import { uiText, setUiText, UI } from '../ui/text';
 
 const BAR_W = 70;
 const BAR_H = 5;
@@ -8,9 +9,9 @@ const MAX_FLASK_ICONS = 5;
 
 export class HudScene extends Phaser.Scene {
   private bars!: Phaser.GameObjects.Graphics;
-  private soulsText!: Phaser.GameObjects.Text;
-  private hintText!: Phaser.GameObjects.Text;
-  private bossName!: Phaser.GameObjects.Text;
+  private soulsText!: Phaser.GameObjects.BitmapText;
+  private hintText!: Phaser.GameObjects.BitmapText;
+  private bossName!: Phaser.GameObjects.BitmapText;
   private flaskIcons: Phaser.GameObjects.Image[] = [];
 
   constructor() {
@@ -19,34 +20,17 @@ export class HudScene extends Phaser.Scene {
 
   create(): void {
     this.bars = this.add.graphics();
-    this.soulsText = this.add
-      .text(GAME_WIDTH - 16, GAME_HEIGHT - 13, '', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#c9a227',
-      })
-      .setOrigin(1, 0);
+    this.soulsText = uiText(this, GAME_WIDTH - 16, GAME_HEIGHT - 13, '', UI.gold).setOrigin(1, 0);
     this.add.image(GAME_WIDTH - 9, GAME_HEIGHT - 9, 'ui', UI_FRAMES.fishbone[0]);
-    this.hintText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 10, '', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#6f6c8a',
-      })
-      .setOrigin(0.5);
+    this.hintText = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT - 11, '', UI.fog).setOrigin(0.5, 0);
 
     this.flaskIcons = [];
     for (let i = 0; i < MAX_FLASK_ICONS; i++) {
       this.flaskIcons.push(this.add.image(12 + i * 10, 28, 'ui', UI_FRAMES.flask).setVisible(false));
     }
 
-    this.bossName = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 28, BOSS.nameRu, {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#d8cfc0',
-      })
-      .setOrigin(0.5)
+    this.bossName = uiText(this, GAME_WIDTH / 2, GAME_HEIGHT - 30, BOSS.nameRu, UI.bone)
+      .setOrigin(0.5, 0)
       .setVisible(false);
   }
 
@@ -72,8 +56,8 @@ export class HudScene extends Phaser.Scene {
     g.fillStyle(0x3e7a4e, 1);
     g.fillRect(7, 15, Math.max(0, (BAR_W * st) / maxSt), BAR_H);
 
-    this.soulsText.setText(`${STRINGS.souls}: ${souls}`);
-    this.hintText.setText((r.get('hint') as string) ?? '');
+    setUiText(this.soulsText, `${STRINGS.souls}: ${souls}`);
+    setUiText(this.hintText, (r.get('hint') as string) ?? '');
     this.flaskIcons.forEach((icon, i) => icon.setVisible(i < flasks));
 
     // босс-бар

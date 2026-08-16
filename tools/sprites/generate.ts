@@ -5,6 +5,8 @@ import { tileFrames } from './defs/tiles';
 import { enemyFrames } from './defs/enemies';
 import { uiFrames } from './defs/ui';
 import { bossFrames } from './defs/boss';
+import { buildFontFrames } from './defs/font';
+import { FONT_CHARS_PER_ROW, FONT_CELL_W, FONT_CELL_H } from './defs/fontCharset';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
@@ -34,5 +36,8 @@ writeSheet(join(OUT, 'ui.png'), uiFrames, 16, 16);
 
 // ── boss.png: Graveyard Warden 32x32 ──────────────────────────────────────
 writeSheet(join(OUT, 'boss.png'), bossFrames, 32, 32);
+
+// ── font.png: пиксельный шрифт 5×7 (клетки 6×8) ───────────────────────────
+writeSheet(join(OUT, 'font.png'), buildFontFrames(), FONT_CELL_W, FONT_CELL_H, FONT_CHARS_PER_ROW);
 
 console.log('Done.');

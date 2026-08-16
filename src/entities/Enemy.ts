@@ -125,6 +125,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
   takeHit(damage: number, fromX: number, fromY: number): void {
     if (this.enemyState === 'dead') return;
     this.hp -= damage;
+    this.scene.events.emit('float-text', { x: this.x, y: this.y - 10, text: String(damage), tint: 0xc9a227 });
     hitFlash(this.scene, this);
     knockbackFrom(this, fromX, fromY, 90);
     // удар выводит из патруля

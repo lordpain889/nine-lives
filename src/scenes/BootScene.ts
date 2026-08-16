@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CLASSES, CAT_FRAMES, FRAMES_PER_CLASS, ENEMY_FRAMES, UI_FRAMES, BOSS_FRAMES } from '../config/gameData';
+import { registerFont } from '../ui/text';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -12,9 +13,12 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('enemies', 'assets/enemies.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('ui', 'assets/ui.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 32, frameHeight: 32 });
+    this.load.image('font', 'assets/font.png');
   }
 
   create(): void {
+    registerFont(this);
+
     // Анимации: ключ `${class}-${anim}`, кадры со сдвигом ряда класса
     CLASSES.forEach((def, classIndex) => {
       const off = classIndex * FRAMES_PER_CLASS;

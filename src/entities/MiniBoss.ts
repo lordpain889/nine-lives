@@ -132,6 +132,7 @@ export class MiniBoss extends Phaser.Physics.Arcade.Sprite implements Damageable
   takeHit(damage: number, _fromX: number, _fromY: number): void {
     if (this.bossState === 'dead' || this.bossState === 'dormant') return;
     this.hp -= damage;
+    this.scene.events.emit('float-text', { x: this.x, y: this.y - 18, text: String(damage), tint: 0xc9a227 });
     this.scene.registry.set('bossHp', Math.max(0, this.hp));
     hitFlash(this.scene, this);
     // босс не отлетает от ударов

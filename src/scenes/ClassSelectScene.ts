@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/gameConfig';
 import { CLASSES, STRINGS } from '../config/gameData';
+import { uiText, setUiText, UI } from '../ui/text';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected = 0;
   private cats: Phaser.GameObjects.Sprite[] = [];
-  private frame!: Phaser.GameObjects.Rectangle;
-  private nameText!: Phaser.GameObjects.Text;
-  private descText!: Phaser.GameObjects.Text;
-  private statsText!: Phaser.GameObjects.Text;
+  private frame!: Phaser.GameObjects.Image;
+  private nameText!: Phaser.GameObjects.BitmapText;
+  private descText!: Phaser.GameObjects.BitmapText;
+  private statsText!: Phaser.GameObjects.BitmapText;
 
   constructor() {
     super('class-select');
@@ -19,38 +20,23 @@ export class ClassSelectScene extends Phaser.Scene {
     this.cats = [];
     const cx = GAME_WIDTH / 2;
 
-    this.add
-      .text(cx, 18, STRINGS.chooseClass, {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#c9a227',
-      })
-      .setOrigin(0.5);
+    uiText(this, cx, 14, STRINGS.chooseClass, UI.gold).setOrigin(0.5);
 
     // 4 кота в ряд, каждый в своей idle-анимации
     const spacing = 56;
     const startX = cx - spacing * 1.5;
     CLASSES.forEach((def, i) => {
-      const cat = this.add.sprite(startX + i * spacing, 56, 'cats');
+      const cat = this.add.sprite(startX + i * spacing, 52, 'cats');
       cat.setScale(2);
       cat.play(`${def.key}-idle`);
       this.cats.push(cat);
     });
 
-    this.frame = this.add
-      .rectangle(this.cats[0].x, 56, 40, 40)
-      .setStrokeStyle(1, 0xc9a227)
-      .setFillStyle(0, 0);
+    this.frame = this.add.image(this.cats[0].x, 52, 'ui', 8).setScale(2.5);
 
-    this.nameText = this.add
-      .text(cx, 92, '', { fontFamily: 'monospace', fontSize: '12px', color: '#d8cfc0', fontStyle: 'bold' })
-      .setOrigin(0.5);
-    this.descText = this.add
-      .text(cx, 118, '', { fontFamily: 'monospace', fontSize: '8px', color: '#6f6c8a', align: 'center' })
-      .setOrigin(0.5);
-    this.statsText = this.add
-      .text(cx, 150, '', { fontFamily: 'monospace', fontSize: '8px', color: '#a89f94' })
-      .setOrigin(0.5);
+    this.nameText = uiText(this, cx, 86, '', UI.bone, 2).setOrigin(0.5);
+    this.descText = uiText(this, cx, 112, '', UI.fog).setOrigin(0.5).setCenterAlign();
+    this.statsText = uiText(this, cx, 150, '', UI.bone).setOrigin(0.5);
 
     this.refresh();
 
@@ -72,11 +58,12 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private refresh(): void {
     const def = CLASSES[this.selected];
-    this.frame.setPosition(this.cats[this.selected].x, 56);
-    this.nameText.setText(def.nameRu);
-    this.descText.setText(def.descRu);
-    this.statsText.setText(
-      `HP ${def.hp}   выносливость ${def.stamina}   скорость ${def.speed}   урон ${def.attack.damage}`,
+    this.frame.setPosition(this.cats[this.selected].x, 52);
+    setUiText(this.nameText, def.nameRu);
+    setUiText(this.descText, def.descRu);
+    setUiText(
+      this.statsText,
+      `HP ${def.hp}  выносл ${def.stamina}  скор ${def.speed}  урон ${def.attack.damage}`,
     );
   }
 }

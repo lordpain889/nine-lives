@@ -55,8 +55,73 @@ const flask: Matrix = setPixels(e, [
   [6, 10, 'B'], [7, 10, 'B'], [8, 10, 'B'], [9, 10, 'B'],
 ]);
 
+// ── панель (источник 9-slice, границы 4px) ────────────────────────────────
+function panelFrame(): Matrix {
+  const rows = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '1'));
+  for (let i = 0; i < 16; i++) {
+    rows[0][i] = '3'; //  внешний обод
+    rows[15][i] = '3';
+    rows[i][0] = '3';
+    rows[i][15] = '3';
+    rows[1][i] = i < 2 || i > 13 ? '3' : 'f'; // блик сверху
+    rows[14][i] = i < 2 || i > 13 ? '3' : '0'; // тень снизу
+    if (i > 1 && i < 14) {
+      rows[i][1] = '2';
+      rows[i][14] = '0';
+    }
+  }
+  return rows.map((r) => r.join(''));
+}
+
+// слот инвентаря: тонкая рамка, тёмный фон
+function slotFrame(): Matrix {
+  const rows = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '0'));
+  for (let i = 0; i < 16; i++) {
+    rows[0][i] = '2';
+    rows[15][i] = '2';
+    rows[i][0] = '2';
+    rows[i][15] = '2';
+  }
+  rows[15][15] = '3';
+  return rows.map((r) => r.join(''));
+}
+
+// курсор выбора: золотые уголки
+function cursorFrame(): Matrix {
+  const rows = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '.'));
+  const corner = (cx: number, cy: number, dx: number, dy: number) => {
+    for (let i = 0; i < 4; i++) {
+      rows[cy][cx + i * dx] = 'y';
+      rows[cy + i * dy][cx] = 'y';
+    }
+  };
+  corner(0, 0, 1, 1);
+  corner(15, 0, -1, 1);
+  corner(0, 15, 1, -1);
+  corner(15, 15, -1, -1);
+  return rows.map((r) => r.join(''));
+}
+
+// маркеры NPC
+const markerQuest = setPixels(e, [
+  [7, 3, 'y'], [8, 3, 'y'], [7, 4, 'y'], [8, 4, 'y'], [7, 5, 'y'], [8, 5, 'y'],
+  [7, 6, 'y'], [8, 6, 'y'], [7, 7, 'y'], [8, 7, 'y'],
+  [7, 9, 'y'], [8, 9, 'y'], [7, 10, 'y'], [8, 10, 'y'],
+]);
+const markerDone = setPixels(e, [
+  [6, 3, 'c'], [7, 3, 'c'], [8, 3, 'c'], [9, 3, 'c'],
+  [5, 4, 'c'], [9, 4, 'c'], [10, 4, 'c'],
+  [9, 5, 'c'], [8, 6, 'c'], [7, 7, 'c'],
+  [7, 9, 'c'], [7, 10, 'c'],
+]);
+
 export const uiFrames: Matrix[] = [
   flame1, flame2, flame3, // 0-2
   fishbone1, fishbone2, //  3-4
   flask, //                 5
+  panelFrame(), //          6  панель (9-slice, границы 4)
+  slotFrame(), //           7  слот
+  cursorFrame(), //         8  курсор
+  markerQuest, //           9  «!» над NPC
+  markerDone, //            10 «?» над NPC
 ];
