@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
+import { TitleScene } from '../scenes/TitleScene';
+import { ClassSelectScene } from '../scenes/ClassSelectScene';
 import { GameScene } from '../scenes/GameScene';
 
 export const GAME_WIDTH = 320;
@@ -29,5 +31,5 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, GameScene],
+  scene: [BootScene, TitleScene, ClassSelectScene, GameScene],
 };

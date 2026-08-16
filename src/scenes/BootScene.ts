@@ -28,6 +28,6 @@ export class BootScene extends Phaser.Scene {
     });
 
     if (!this.registry.has('classKey')) this.registry.set('classKey', 'knight');
-    this.scene.start('game');
+    this.scene.start('title');
   }
 }
