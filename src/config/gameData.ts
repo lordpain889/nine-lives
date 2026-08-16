@@ -77,6 +77,29 @@ export const UI_FRAMES = {
   flask: 5,
 } as const;
 
+// ─── Босс: Graveyard Warden ──────────────────────────────────────────────
+export const BOSS_FRAMES = {
+  idle: [0, 1],
+  walk: [2, 3],
+  swipeWindup: [4, 5],
+  swipe: [6, 7],
+  slamWindup: [8, 9],
+  slam: [10, 11],
+  death: [12, 13, 14],
+} as const;
+
+export const BOSS = {
+  nameRu: 'СТРАЖ КЛАДБИЩА',
+  hp: 300,
+  speed: 42,
+  swipe: { damage: 24, range: 34, windupMs: 650, hitbox: 26 },
+  slam: { damage: 32, range: 64, windupMs: 950, radius: 42 },
+  recoverMs: 700,
+  soulValue: 500,
+  phase2At: 0.5, //   ниже этой доли HP — фаза 2
+  phase2Speedup: 0.65, // множитель замахов в фазе 2
+};
+
 // ─── Тайлы (индексы в tiles.png) ─────────────────────────────────────────
 export const TILES = {
   grassA: 0,
@@ -153,4 +176,6 @@ export const STRINGS = {
   rested: 'алтарь принял тебя',
   soulsRecovered: 'кости возвращены',
   controls: 'WASD — ходьба   J — удар   K — перекат   H — фляга',
+  victorySub: 'кладбище обрело покой. девять жизней целы.',
+  backToTitle: 'ENTER — на титул',
 };

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
-import { STRINGS, UI_FRAMES } from '../config/gameData';
+import { STRINGS, UI_FRAMES, BOSS } from '../config/gameData';
 
 const BAR_W = 70;
 const BAR_H = 5;
@@ -10,6 +10,7 @@ export class HudScene extends Phaser.Scene {
   private bars!: Phaser.GameObjects.Graphics;
   private soulsText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
+  private bossName!: Phaser.GameObjects.Text;
   private flaskIcons: Phaser.GameObjects.Image[] = [];
 
   constructor() {
@@ -38,6 +39,15 @@ export class HudScene extends Phaser.Scene {
     for (let i = 0; i < MAX_FLASK_ICONS; i++) {
       this.flaskIcons.push(this.add.image(12 + i * 10, 28, 'ui', UI_FRAMES.flask).setVisible(false));
     }
+
+    this.bossName = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 28, BOSS.nameRu, {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#d8cfc0',
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
   }
 
   update(): void {
@@ -65,5 +75,18 @@ export class HudScene extends Phaser.Scene {
     this.soulsText.setText(`${STRINGS.souls}: ${souls}`);
     this.hintText.setText((r.get('hint') as string) ?? '');
     this.flaskIcons.forEach((icon, i) => icon.setVisible(i < flasks));
+
+    // босс-бар
+    const bossActive = (r.get('bossActive') as boolean) ?? false;
+    this.bossName.setVisible(bossActive);
+    if (bossActive) {
+      const bHp = (r.get('bossHp') as number) ?? 0;
+      const bMax = (r.get('bossMaxHp') as number) ?? 1;
+      const w = 160;
+      g.fillStyle(0x0d0a14, 0.8);
+      g.fillRect(GAME_WIDTH / 2 - w / 2 - 1, GAME_HEIGHT - 22, w + 2, 6);
+      g.fillStyle(0x8c2233, 1);
+      g.fillRect(GAME_WIDTH / 2 - w / 2, GAME_HEIGHT - 21, Math.max(0, (w * bHp) / bMax), 4);
+    }
   }
 }

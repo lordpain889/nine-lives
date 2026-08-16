@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
+import { MiniBoss } from '../entities/MiniBoss';
 import { Shrine } from '../entities/Shrine';
 import { classByKey, COLLIDING_TILES, ENEMIES, STRINGS, TUNING } from '../config/gameData';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
@@ -12,6 +13,7 @@ const SHRINE_RADIUS = 22;
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private enemies!: Phaser.GameObjects.Group;
+  private boss: MiniBoss | null = null;
   private shrines: Shrine[] = [];
   private soulDrop: Phaser.Physics.Arcade.Sprite | null = null;
   private playerHitboxes!: Phaser.Physics.Arcade.Group;
@@ -41,8 +43,11 @@ export class GameScene extends Phaser.Scene {
     this.registry.set('checkpoint', spawn);
     this.registry.set('pendingDrop', null);
     this.registry.set('hint', STRINGS.controls);
+    this.registry.set('bossActive', false);
+    this.registry.set('bossDefeated', false);
     this.dying = false;
     this.soulDrop = null;
+    this.boss = null;
 
     const classDef = classByKey(this.registry.get('classKey') as string);
     this.player = new Player(this, spawn.x, spawn.y, classDef);
@@ -86,14 +91,24 @@ export class GameScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.enemyHitboxes, this.player, (a, b) => {
       const [zone] = pick<Phaser.GameObjects.Zone>(a, b, isZone);
+      // слэм босса — круговой: за пределами радиуса не задевает
+      const radius = zone.getData('radius') as number | undefined;
+      if (
+        radius !== undefined &&
+        Phaser.Math.Distance.Between(zone.x, zone.y, this.player.x, this.player.y) > radius
+      ) {
+        return;
+      }
       this.player.takeHit(
         zone.getData('damage') as number,
-        zone.getData('fromX') as number,
-        zone.getData('fromY') as number,
+        (zone.getData('fromX') as number) ?? zone.x,
+        (zone.getData('fromY') as number) ?? zone.y,
       );
     });
     this.physics.add.overlap(this.playerProjectiles, this.enemies, (a, b) => {
-      const [p, enemyObj] = pick<Phaser.Physics.Arcade.Sprite>(a, b, (o) => !(o instanceof Enemy));
+      const [p, enemyObj] = pick<Phaser.Physics.Arcade.Sprite>(a, b, (o) =>
+        this.playerProjectiles.contains(o as Phaser.GameObjects.GameObject),
+      );
       (enemyObj as Enemy).takeHit(p.getData('damage') as number, p.x, p.y);
       p.destroy();
     });
@@ -136,9 +151,28 @@ export class GameScene extends Phaser.Scene {
     });
     this.events.on('player-died', () => this.onPlayerDied());
 
+    // ── атаки босса ──
+    this.events.on(
+      'boss-swipe',
+      (e: { x: number; y: number; damage: number; fromX: number; fromY: number; size: number }) => {
+        const zone = spawnMeleeHitbox(this, this.enemyHitboxes, e.x, e.y, e.size, e.size, e.damage, 180);
+        zone.setData('fromX', e.fromX);
+        zone.setData('fromY', e.fromY);
+      },
+    );
+    this.events.on('boss-slam', (e: { x: number; y: number; damage: number; radius: number }) => {
+      const zone = spawnMeleeHitbox(this, this.enemyHitboxes, e.x, e.y, e.radius * 2, e.radius * 2, e.damage, 200);
+      zone.setData('radius', e.radius);
+      this.cameras.main.shake(180, 0.012);
+    });
+    this.events.on('boss-defeated', () => this.onBossDefeated());
+
     // scene.restart() НЕ снимает слушателей — без этого они копятся
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      for (const ev of ['player-melee', 'player-cast', 'enemy-melee', 'enemy-cast', 'enemy-died', 'player-died']) {
+      for (const ev of [
+        'player-melee', 'player-cast', 'enemy-melee', 'enemy-cast',
+        'enemy-died', 'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated',
+      ]) {
         this.events.off(ev);
       }
     });
@@ -153,10 +187,15 @@ export class GameScene extends Phaser.Scene {
   // ── враги: спавн и респавн (правило алтаря) ──
   private spawnEnemies(): void {
     this.enemies.clear(true, true);
+    this.boss = null;
     for (const s of SPAWNS) {
       if (s.type === 'gravehound' || s.type === 'acolyte') {
         const enemy = new Enemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES[s.type]);
         this.enemies.add(enemy);
+      } else if (s.type === 'boss' && !(this.registry.get('bossDefeated') as boolean)) {
+        this.boss = new MiniBoss(this, s.x * 16 + 8, s.y * 16 + 8);
+        this.enemies.add(this.boss);
+        this.registry.set('bossActive', false);
       }
     }
   }
@@ -253,6 +292,37 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ── победа ──
+  private onBossDefeated(): void {
+    this.registry.set('bossDefeated', true);
+    this.time.delayedCall(1200, () => {
+      const overlay = this.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0d0a14, 0)
+        .setScrollFactor(0)
+        .setDepth(9999);
+      this.tweens.add({ targets: overlay, fillAlpha: 0.75, duration: 900 });
+
+      const mk = (y: number, msg: string, size: string, color: string) =>
+        this.add
+          .text(GAME_WIDTH / 2, y, msg, { fontFamily: 'monospace', fontSize: size, color, fontStyle: size === '20px' ? 'bold' : 'normal' })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(10000)
+          .setAlpha(0);
+
+      const t1 = mk(66, STRINGS.victory, '20px', '#c9a227');
+      const t2 = mk(92, STRINGS.victorySub, '8px', '#6f6c8a');
+      const t3 = mk(112, `${STRINGS.souls}: ${(this.registry.get('souls') as number) ?? 0}`, '8px', '#4fa4b8');
+      const t4 = mk(140, STRINGS.backToTitle, '8px', '#d8cfc0');
+      this.tweens.add({ targets: [t1, t2, t3, t4], alpha: 1, duration: 900, delay: 400 });
+
+      this.input.keyboard!.once('keydown-ENTER', () => {
+        this.scene.stop('hud');
+        this.scene.start('title');
+      });
+    });
+  }
+
   private showBanner(msg: string, color: string): void {
     const banner = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, msg, {
@@ -270,6 +340,17 @@ export class GameScene extends Phaser.Scene {
     this.player.update(time, delta);
     for (const obj of this.enemies.getChildren()) {
       (obj as Enemy).update(this.player);
+    }
+
+    // вход в склеп будит Стража
+    if (
+      this.boss &&
+      this.boss.bossState === 'dormant' &&
+      this.player.y < 11 * 16 &&
+      this.player.x > 21 * 16 &&
+      this.player.x < 40 * 16
+    ) {
+      this.boss.activate();
     }
 
     // подсказка и отдых у алтаря

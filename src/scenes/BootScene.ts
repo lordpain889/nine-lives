@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CLASSES, CAT_FRAMES, FRAMES_PER_CLASS, ENEMY_FRAMES, UI_FRAMES } from '../config/gameData';
+import { CLASSES, CAT_FRAMES, FRAMES_PER_CLASS, ENEMY_FRAMES, UI_FRAMES, BOSS_FRAMES } from '../config/gameData';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +11,7 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('tiles', 'assets/tiles.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('enemies', 'assets/enemies.png', { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('ui', 'assets/ui.png', { frameWidth: 16, frameHeight: 16 });
+    this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 32, frameHeight: 32 });
   }
 
   create(): void {
@@ -45,6 +46,15 @@ export class BootScene extends Phaser.Scene {
     const uiFrames = (list: readonly number[]) => list.map((f) => ({ key: 'ui', frame: f }));
     this.anims.create({ key: 'shrine-flame', frames: uiFrames(UI_FRAMES.flame), frameRate: 5, repeat: -1 });
     this.anims.create({ key: 'fishbone', frames: uiFrames(UI_FRAMES.fishbone), frameRate: 3, repeat: -1 });
+
+    const bFrames = (list: readonly number[]) => list.map((f) => ({ key: 'boss', frame: f }));
+    this.anims.create({ key: 'warden-idle', frames: bFrames(BOSS_FRAMES.idle), frameRate: 2, repeat: -1 });
+    this.anims.create({ key: 'warden-walk', frames: bFrames(BOSS_FRAMES.walk), frameRate: 4, repeat: -1 });
+    this.anims.create({ key: 'warden-swipe-windup', frames: bFrames(BOSS_FRAMES.swipeWindup), frameRate: 5, repeat: -1 });
+    this.anims.create({ key: 'warden-swipe', frames: bFrames(BOSS_FRAMES.swipe), frameRate: 10, repeat: 0 });
+    this.anims.create({ key: 'warden-slam-windup', frames: bFrames(BOSS_FRAMES.slamWindup), frameRate: 5, repeat: -1 });
+    this.anims.create({ key: 'warden-slam', frames: bFrames(BOSS_FRAMES.slam), frameRate: 8, repeat: 0 });
+    this.anims.create({ key: 'warden-death', frames: bFrames(BOSS_FRAMES.death), frameRate: 3, repeat: 0 });
 
     if (!this.registry.has('classKey')) this.registry.set('classKey', 'knight');
     if (!this.registry.has('souls')) this.registry.set('souls', 0);

@@ -4,6 +4,7 @@ import { catBodyFrames, weaponOverlays, classRecolors, FRAMES_PER_CLASS } from '
 import { tileFrames } from './defs/tiles';
 import { enemyFrames } from './defs/enemies';
 import { uiFrames } from './defs/ui';
+import { bossFrames } from './defs/boss';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
@@ -30,5 +31,8 @@ writeSheet(join(OUT, 'enemies.png'), enemyFrames, 16, 16);
 
 // ── ui.png: пламя алтаря, рыбья кость, фляга ──────────────────────────────
 writeSheet(join(OUT, 'ui.png'), uiFrames, 16, 16);
+
+// ── boss.png: Graveyard Warden 32x32 ──────────────────────────────────────
+writeSheet(join(OUT, 'boss.png'), bossFrames, 32, 32);
 
 console.log('Done.');
