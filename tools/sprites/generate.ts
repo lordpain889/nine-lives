@@ -3,6 +3,7 @@ import { Matrix, overlay, recolor, writeSheet } from './lib';
 import { catBodyFrames, weaponOverlays, classRecolors, FRAMES_PER_CLASS } from './defs/cats';
 import { tileFrames } from './defs/tiles';
 import { enemyFrames } from './defs/enemies';
+import { uiFrames } from './defs/ui';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
@@ -26,5 +27,8 @@ writeSheet(join(OUT, 'tiles.png'), tileFrames, 16, 16);
 
 // ── enemies.png: один ряд (гончая, аколит, снаряды) ───────────────────────
 writeSheet(join(OUT, 'enemies.png'), enemyFrames, 16, 16);
+
+// ── ui.png: пламя алтаря, рыбья кость, фляга ──────────────────────────────
+writeSheet(join(OUT, 'ui.png'), uiFrames, 16, 16);
 
 console.log('Done.');

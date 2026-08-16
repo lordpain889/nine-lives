@@ -1,13 +1,16 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
-import { STRINGS } from '../config/gameData';
+import { STRINGS, UI_FRAMES } from '../config/gameData';
 
 const BAR_W = 70;
 const BAR_H = 5;
+const MAX_FLASK_ICONS = 5;
 
 export class HudScene extends Phaser.Scene {
   private bars!: Phaser.GameObjects.Graphics;
   private soulsText!: Phaser.GameObjects.Text;
+  private hintText!: Phaser.GameObjects.Text;
+  private flaskIcons: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super('hud');
@@ -16,12 +19,25 @@ export class HudScene extends Phaser.Scene {
   create(): void {
     this.bars = this.add.graphics();
     this.soulsText = this.add
-      .text(GAME_WIDTH - 6, GAME_HEIGHT - 12, '', {
+      .text(GAME_WIDTH - 16, GAME_HEIGHT - 13, '', {
         fontFamily: 'monospace',
         fontSize: '8px',
         color: '#c9a227',
       })
       .setOrigin(1, 0);
+    this.add.image(GAME_WIDTH - 9, GAME_HEIGHT - 9, 'ui', UI_FRAMES.fishbone[0]);
+    this.hintText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 10, '', {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#6f6c8a',
+      })
+      .setOrigin(0.5);
+
+    this.flaskIcons = [];
+    for (let i = 0; i < MAX_FLASK_ICONS; i++) {
+      this.flaskIcons.push(this.add.image(12 + i * 10, 28, 'ui', UI_FRAMES.flask).setVisible(false));
+    }
   }
 
   update(): void {
@@ -31,6 +47,7 @@ export class HudScene extends Phaser.Scene {
     const st = (r.get('stamina') as number) ?? 0;
     const maxSt = (r.get('maxStamina') as number) ?? 1;
     const souls = (r.get('souls') as number) ?? 0;
+    const flasks = (r.get('flasks') as number) ?? 0;
 
     const g = this.bars;
     g.clear();
@@ -46,5 +63,7 @@ export class HudScene extends Phaser.Scene {
     g.fillRect(7, 15, Math.max(0, (BAR_W * st) / maxSt), BAR_H);
 
     this.soulsText.setText(`${STRINGS.souls}: ${souls}`);
+    this.hintText.setText((r.get('hint') as string) ?? '');
+    this.flaskIcons.forEach((icon, i) => icon.setVisible(i < flasks));
   }
 }

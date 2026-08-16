@@ -56,6 +56,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
       roll1: kb.addKey(K.K),
       roll2: kb.addKey(K.X),
       roll3: kb.addKey(K.SHIFT),
+      flask1: kb.addKey(K.H),
+      flask2: kb.addKey(K.F),
     };
 
     this.play(`${classDef.key}-idle`);
@@ -135,6 +137,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
       Phaser.Input.Keyboard.JustDown(k.roll3)
     ) {
       this.tryRoll(vx, vy);
+    } else if (Phaser.Input.Keyboard.JustDown(k.flask1) || Phaser.Input.Keyboard.JustDown(k.flask2)) {
+      this.drinkFlask();
     }
 
     this.setDepth(this.y);
@@ -194,6 +198,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements Damageable {
         this.state = 'move';
         this.setVelocity(0, 0);
       }
+    });
+  }
+
+  private drinkFlask(): void {
+    const flasks = (this.scene.registry.get('flasks') as number) ?? 0;
+    if (flasks <= 0 || this.hp >= this.classDef.hp) return;
+    this.scene.registry.set('flasks', flasks - 1);
+    this.hp = Math.min(this.classDef.hp, this.hp + TUNING.flaskHeal);
+    this.syncHud();
+    // зелёная вспышка лечения
+    this.setTintFill(0x3e7a4e);
+    this.scene.time.delayedCall(120, () => {
+      if (this.active) this.clearTint();
     });
   }
 

@@ -1,19 +1,26 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
-import { classByKey, COLLIDING_TILES, ENEMIES, STRINGS } from '../config/gameData';
+import { Shrine } from '../entities/Shrine';
+import { classByKey, COLLIDING_TILES, ENEMIES, STRINGS, TUNING } from '../config/gameData';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { buildGraveyard, SPAWNS } from '../levels/graveyard';
 import { spawnMeleeHitbox } from '../systems/combat';
 
+const SHRINE_RADIUS = 22;
+
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private enemies!: Phaser.GameObjects.Group;
+  private shrines: Shrine[] = [];
+  private soulDrop: Phaser.Physics.Arcade.Sprite | null = null;
   private playerHitboxes!: Phaser.Physics.Arcade.Group;
   private enemyHitboxes!: Phaser.Physics.Arcade.Group;
   private playerProjectiles!: Phaser.Physics.Arcade.Group;
   private enemyProjectiles!: Phaser.Physics.Arcade.Group;
   private layer!: Phaser.Tilemaps.TilemapLayer;
+  private keyE!: Phaser.Input.Keyboard.Key;
+  private dying = false;
 
   constructor() {
     super('game');
@@ -26,10 +33,26 @@ export class GameScene extends Phaser.Scene {
     this.layer = map.createLayer(0, tileset, 0, 0)!;
     this.layer.setCollision(COLLIDING_TILES);
 
-    const classDef = classByKey(this.registry.get('classKey') as string);
+    // ── новый забег: сброс состояния ──
     const ps = SPAWNS.find((s) => s.type === 'player')!;
-    this.player = new Player(this, ps.x * 16 + 8, ps.y * 16 + 8, classDef);
+    const spawn = { x: ps.x * 16 + 8, y: ps.y * 16 + 8 };
+    this.registry.set('souls', 0);
+    this.registry.set('flasks', TUNING.flasks);
+    this.registry.set('checkpoint', spawn);
+    this.registry.set('pendingDrop', null);
+    this.registry.set('hint', STRINGS.controls);
+    this.dying = false;
+    this.soulDrop = null;
+
+    const classDef = classByKey(this.registry.get('classKey') as string);
+    this.player = new Player(this, spawn.x, spawn.y, classDef);
     this.physics.add.collider(this.player, this.layer);
+
+    // ── алтари ──
+    this.shrines = SPAWNS.filter((s) => s.type === 'shrine').map(
+      (s) => new Shrine(this, s.x * 16 + 8, s.y * 16 + 8),
+    );
+    this.keyE = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
     // ── группы боёвки ──
     this.enemies = this.add.group();
@@ -38,16 +61,9 @@ export class GameScene extends Phaser.Scene {
     this.playerProjectiles = this.physics.add.group();
     this.enemyProjectiles = this.physics.add.group();
 
-    for (const s of SPAWNS) {
-      if (s.type === 'gravehound' || s.type === 'acolyte') {
-        const enemy = new Enemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES[s.type]);
-        this.enemies.add(enemy);
-        this.physics.add.collider(enemy, this.layer);
-      }
-    }
-
-    // враги толкаются с игроком, но урон — только атаками
-    this.physics.add.collider(this.player, this.enemies as unknown as Phaser.Physics.Arcade.Group);
+    this.physics.add.collider(this.enemies, this.layer);
+    this.physics.add.collider(this.player, this.enemies);
+    this.spawnEnemies();
 
     // ── оверлапы урона ──
     // Порядок аргументов колбэка у Phaser не гарантирован при миксе
@@ -134,6 +150,17 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('hud');
   }
 
+  // ── враги: спавн и респавн (правило алтаря) ──
+  private spawnEnemies(): void {
+    this.enemies.clear(true, true);
+    for (const s of SPAWNS) {
+      if (s.type === 'gravehound' || s.type === 'acolyte') {
+        const enemy = new Enemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES[s.type]);
+        this.enemies.add(enemy);
+      }
+    }
+  }
+
   private spawnProjectile(
     group: Phaser.Physics.Arcade.Group,
     x: number,
@@ -157,27 +184,105 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ── алтарь ──
+  private restAtShrine(): void {
+    this.registry.set('flasks', TUNING.flasks);
+    this.registry.set('checkpoint', { x: this.player.x, y: this.player.y });
+    this.player.revive(this.player.x, this.player.y);
+    this.spawnEnemies(); // отдых воскрешает мир
+    this.cameras.main.flash(400, 201, 162, 39, false);
+    this.showBanner(STRINGS.rested, '#c9a227');
+  }
+
+  // ── смерть и возрождение ──
   private onPlayerDied(): void {
-    // M3: временно — экран смерти и рестарт сцены (полный луп в M4)
-    const cam = this.cameras.main;
+    if (this.dying) return;
+    this.dying = true;
+
+    const souls = (this.registry.get('souls') as number) ?? 0;
+    this.registry.set('pendingDrop', souls > 0 ? { x: this.player.x, y: this.player.y, amount: souls } : null);
+    this.registry.set('souls', 0);
+
     const text = this.add
-      .text(cam.scrollX + GAME_WIDTH / 2, cam.scrollY + GAME_HEIGHT / 2, STRINGS.youDied, {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, STRINGS.youDied, {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#8c2233',
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setScrollFactor(0)
       .setDepth(10000)
       .setAlpha(0);
-    this.tweens.add({ targets: text, alpha: 1, duration: 800 });
-    this.time.delayedCall(2500, () => this.scene.restart());
+    this.tweens.add({ targets: text, alpha: 1, duration: 900 });
+
+    this.time.delayedCall(2200, () => {
+      this.cameras.main.fadeOut(400, 13, 10, 20);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        text.destroy();
+        const cp = this.registry.get('checkpoint') as { x: number; y: number };
+        this.player.revive(cp.x, cp.y);
+        this.registry.set('flasks', TUNING.flasks);
+        this.spawnEnemies();
+        this.refreshSoulDrop();
+        this.dying = false;
+        this.cameras.main.fadeIn(400, 13, 10, 20);
+      });
+    });
+  }
+
+  private refreshSoulDrop(): void {
+    if (this.soulDrop) {
+      this.soulDrop.destroy();
+      this.soulDrop = null;
+    }
+    const drop = this.registry.get('pendingDrop') as { x: number; y: number; amount: number } | null;
+    if (!drop) return;
+
+    const sprite = this.physics.add.sprite(drop.x, drop.y, 'ui');
+    sprite.play('fishbone');
+    sprite.setDepth(drop.y);
+    (sprite.body as Phaser.Physics.Arcade.Body).setSize(14, 14);
+    this.soulDrop = sprite;
+    this.physics.add.overlap(sprite, this.player, () => {
+      this.registry.set('souls', ((this.registry.get('souls') as number) ?? 0) + drop.amount);
+      this.registry.set('pendingDrop', null);
+      sprite.destroy();
+      this.soulDrop = null;
+      this.showBanner(`${STRINGS.soulsRecovered}: ${drop.amount}`, '#4fa4b8');
+    });
+  }
+
+  private showBanner(msg: string, color: string): void {
+    const banner = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, msg, {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(10000);
+    this.tweens.add({ targets: banner, alpha: 0, delay: 1600, duration: 500, onComplete: () => banner.destroy() });
   }
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
     for (const obj of this.enemies.getChildren()) {
       (obj as Enemy).update(this.player);
+    }
+
+    // подсказка и отдых у алтаря
+    if (this.player.state !== 'dead') {
+      const near = this.shrines.some(
+        (s) => Phaser.Math.Distance.Between(s.x, s.y, this.player.x, this.player.y) < SHRINE_RADIUS,
+      );
+      if (near) {
+        this.registry.set('hint', STRINGS.restHint);
+        if (Phaser.Input.Keyboard.JustDown(this.keyE)) this.restAtShrine();
+      } else if (this.registry.get('hint') === STRINGS.restHint) {
+        this.registry.set('hint', '');
+      }
     }
   }
 }

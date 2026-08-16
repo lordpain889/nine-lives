@@ -70,6 +70,13 @@ export const ENEMY_FRAMES = {
   bolt: [21, 22],
 } as const;
 
+// ─── Кадры ui.png ────────────────────────────────────────────────────────
+export const UI_FRAMES = {
+  flame: [0, 1, 2],
+  fishbone: [3, 4],
+  flask: 5,
+} as const;
+
 // ─── Тайлы (индексы в tiles.png) ─────────────────────────────────────────
 export const TILES = {
   grassA: 0,
@@ -142,4 +149,8 @@ export const STRINGS = {
   youDied: 'ВЫ УМЕРЛИ',
   victory: 'ВРАГ ПОВЕРЖЕН',
   souls: 'рыбьи кости',
+  restHint: 'E — отдохнуть у алтаря',
+  rested: 'алтарь принял тебя',
+  soulsRecovered: 'кости возвращены',
+  controls: 'WASD — ходьба   J — удар   K — перекат   H — фляга',
 };
