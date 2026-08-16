@@ -10,12 +10,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
   hp: number;
   enemyState: State = 'patrol';
 
-  private homeX: number;
-  private patrolDir = 1;
-  private stateUntil = 0;
+  protected homeX: number;
+  protected patrolDir = 1;
+  protected stateUntil = 0;
   // куда бил в момент замаха — атака идёт туда, её можно уклониться
-  private targetX = 0;
-  private targetY = 0;
+  protected targetX = 0;
+  protected targetY = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, def: EnemyDef) {
     super(scene, x, y, 'enemies');
@@ -45,7 +45,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
         this.setVelocity(this.patrolDir * this.def.speed * 0.4, 0);
         this.setFlipX(this.patrolDir < 0);
         this.play(`${this.def.key}-walk`, true);
-        if (playerAlive && dist < this.def.aggroRadius) this.enemyState = 'aggro';
+        if (playerAlive && dist < this.def.aggroRadius) {
+          this.enemyState = 'aggro';
+          // стая агрится вместе (волки)
+          this.scene.events.emit('pack-aggro', { key: this.def.key, x: this.x, y: this.y });
+        }
         break;
       }
       case 'aggro': {
@@ -148,6 +152,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
     (this.body as Phaser.Physics.Arcade.Body).enable = false;
     this.play(`${this.def.key}-death`);
     this.scene.events.emit('enemy-died', {
+      key: this.def.key,
       soulValue: this.def.soulValue,
       x: this.x,
       y: this.y,

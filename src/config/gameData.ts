@@ -68,6 +68,8 @@ export const ENEMY_FRAMES = {
   acolyte: { idle: [10, 11], walk: [12, 13], windup: [14, 15], attack: [16], death: [17, 18] },
   rat: { idle: [24, 25], walk: [26, 27], windup: [28, 29], attack: [30], death: [31] },
   doctor: { idle: [32, 33], walk: [34, 35], windup: [36, 37], attack: [38], death: [39, 40] },
+  wolf: { idle: [45, 46], walk: [47, 48], windup: [49, 50], attack: [51, 52], death: [53] },
+  spirit: { idle: [54, 55], walk: [56, 57], windup: [58, 59], attack: [60], death: [61, 62] },
   fish: [19, 20],
   bolt: [21, 22],
   flask: [41, 42],
@@ -172,6 +174,15 @@ export const TOWN_COLLIDING = [
   TOWN_TILES.stall,
 ];
 
+// лес (26+)
+export const FOREST_TILES = {
+  denseTree: 26,
+  stump: 27,
+  bigShroom: 28,
+} as const;
+
+export const FOREST_COLLIDING = [FOREST_TILES.denseTree, FOREST_TILES.stump];
+
 // ─── Враги ────────────────────────────────────────────────────────────────
 export const ENEMIES: Record<string, EnemyDef> = {
   gravehound: {
@@ -234,6 +245,35 @@ export const ENEMIES: Record<string, EnemyDef> = {
       { id: 'plague_vial', chance: 0.5, min: 1, max: 1 },
       { id: 'wax', chance: 0.3, min: 1, max: 1 },
     ],
+  },
+  wolf: {
+    key: 'wolf',
+    hp: 40,
+    damage: 16,
+    speed: 85,
+    aggroRadius: 90,
+    attackRange: 15,
+    windupMs: 350,
+    recoverMs: 550,
+    kind: 'melee',
+    soulValue: 18,
+    drops: [
+      { id: 'wolf_fang', chance: 0.6, min: 1, max: 1 },
+      { id: 'wolf_hide', chance: 0.3, min: 1, max: 1 },
+    ],
+  },
+  spirit: {
+    key: 'spirit',
+    hp: 30,
+    damage: 14,
+    speed: 45,
+    aggroRadius: 125,
+    attackRange: 100,
+    windupMs: 650,
+    recoverMs: 900,
+    kind: 'projectile',
+    soulValue: 30,
+    drops: [{ id: 'spirit_essence', chance: 0.45, min: 1, max: 1 }],
   },
 };
 

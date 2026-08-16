@@ -164,7 +164,8 @@ export const tileFrames: Matrix[] = [
   pebbles, //    15 декор
   bonesSmall, // 16 декор
   shroomsSmall, // 17 декор
-  ...townTiles(), // 18-25: город (см. ниже)
+  ...townTiles(), //   18-25: город
+  ...forestTiles(), // 26-28: лес (denseTree, stump, bigShroom)
 ];
 
 // ── тайлы чумного города (индексы 18+) ────────────────────────────────────
@@ -224,4 +225,30 @@ function townTiles(): Matrix[] {
   const stall = setPixels(cobble(1), stallPx);
 
   return [cobble(0), cobble(1), houseWall, roof, houseDoor, houseWindow, lantern, stall];
+}
+
+// ── тайлы проклятого леса (26+) ───────────────────────────────────────────
+function forestTiles(): Matrix[] {
+  // плотная крона: непроходимая тьма с проблесками
+  const dense = speckled('0', [
+    [3, 3, '1'], [8, 5, '1'], [12, 2, '1'], [5, 9, '1'], [10, 11, '1'], [2, 13, '1'],
+    [14, 8, '1'], [7, 14, '1'], [4, 6, 'g'], [11, 6, 'g'], [8, 10, 'g'], [13, 13, 'g'],
+  ]);
+
+  // пень
+  const stumpPx: Px = [];
+  for (let y = 6; y <= 11; y++) for (let x = 5; x <= 10; x++) stumpPx.push([x, y, '1']);
+  for (let x = 5; x <= 10; x++) stumpPx.push([x, 6, 'b']);
+  stumpPx.push([7, 6, '3'], [8, 7, '3'], [6, 7, '3']);
+  for (let x = 4; x <= 11; x++) stumpPx.push([x, 12, '0']);
+  const stump = setPixels(grassA, stumpPx);
+
+  // светящийся гриб (источник glow)
+  const shroomPx: Px = [];
+  for (let x = 5; x <= 10; x++) shroomPx.push([x, 7, 'g'], [x, 8, 'g']);
+  shroomPx.push([6, 6, 'g'], [9, 6, 'g'], [7, 5, 'c'], [8, 5, 'c'], [7, 8, 'c']);
+  for (let y = 9; y <= 11; y++) shroomPx.push([7, y, 'b'], [8, y, 'b']);
+  const bigShroom = setPixels(grassA, shroomPx);
+
+  return [dense, stump, bigShroom];
 }

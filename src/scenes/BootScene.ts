@@ -50,7 +50,7 @@ export class BootScene extends Phaser.Scene {
 
     // анимации врагов
     const eFrames = (list: readonly number[]) => list.map((f) => ({ key: 'enemies', frame: f }));
-    for (const key of ['gravehound', 'acolyte', 'rat', 'doctor'] as const) {
+    for (const key of ['gravehound', 'acolyte', 'rat', 'doctor', 'wolf', 'spirit'] as const) {
       const fr = ENEMY_FRAMES[key];
       this.anims.create({ key: `${key}-idle`, frames: eFrames(fr.idle), frameRate: 2, repeat: -1 });
       this.anims.create({ key: `${key}-walk`, frames: eFrames(fr.walk), frameRate: 6, repeat: -1 });

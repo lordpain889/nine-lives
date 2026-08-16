@@ -21,6 +21,17 @@ import { Atmosphere } from '../systems/atmosphere';
 import { rollDrops } from '../systems/loot';
 import { newSave, persist, setFlag, hasFlag } from '../systems/save';
 import { addItem } from '../config/items';
+import { SpiritEnemy } from '../entities/SpiritEnemy';
+import {
+  availableQuest,
+  pendingQuest,
+  acceptQuest,
+  isQuestDone,
+  turnInQuest,
+  onEnemyKilled,
+  onZoneReached,
+} from '../systems/quests';
+import type { QuestDef } from '../config/quests';
 import { DialogBox } from '../ui/DialogBox';
 import { uiText, UI } from '../ui/text';
 import type { DropDef, SaveGame, ZoneDef, ZoneKey } from '../types';
@@ -254,12 +265,30 @@ export class GameScene extends Phaser.Scene {
     );
     this.events.on(
       'enemy-died',
-      (e: { soulValue: number; x: number; y: number; drops?: DropDef[] }) => {
+      (e: { key?: string; soulValue: number; x: number; y: number; drops?: DropDef[] }) => {
         this.registry.set('souls', ((this.registry.get('souls') as number) ?? 0) + e.soulValue);
         this.save.stats.kills += 1;
         rollDrops(this, this.player, e.drops, e.x, e.y);
+        if (e.key) {
+          const doneName = onEnemyKilled(this.save, e.key);
+          if (doneName) this.showBanner(`${doneName} — выполнено`, UI.gold);
+          this.persistNow();
+        }
       },
     );
+    // стая агрится вместе
+    this.events.on('pack-aggro', (e: { key: string; x: number; y: number }) => {
+      for (const obj of this.enemies.getChildren()) {
+        const en = obj as Enemy;
+        if (
+          en.def?.key === e.key &&
+          en.enemyState === 'patrol' &&
+          Phaser.Math.Distance.Between(en.x, en.y, e.x, e.y) < 100
+        ) {
+          en.enemyState = 'aggro';
+        }
+      }
+    });
     this.events.on('loot-picked', () => this.persistNow());
     this.events.on('player-died', () => this.onPlayerDied());
 
@@ -308,6 +337,7 @@ export class GameScene extends Phaser.Scene {
       for (const ev of [
         'player-melee', 'player-cast', 'enemy-melee', 'enemy-cast', 'enemy-lob', 'enemy-died',
         'player-died', 'boss-swipe', 'boss-slam', 'boss-defeated', 'float-text', 'loot-picked',
+        'pack-aggro',
       ]) {
         this.events.off(ev);
       }
@@ -333,6 +363,18 @@ export class GameScene extends Phaser.Scene {
       openInventory();
     });
     this.input.keyboard!.on('keydown-I', openInventory);
+    this.input.keyboard!.on('keydown-J', () => {
+      if (this.player.state === 'dead' || this.dialog.isOpen || this.transitioning) return;
+      this.scene.pause();
+      this.scene.launch('journal');
+    });
+
+    // квест «разведай зону»
+    const reached = onZoneReached(this.save, zoneKey);
+    if (reached) {
+      this.time.delayedCall(800, () => this.showBanner(`${reached} — выполнено`, UI.gold));
+      this.persistNow();
+    }
 
     // ── атмосфера ──
     this.atmosphere = new Atmosphere(this, this.zone.ambient, map.widthInPixels, map.heightInPixels);
@@ -368,12 +410,20 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // Проходим ли тайл (для телепорта духов)
+  isWalkable(px: number, py: number): boolean {
+    const tile = this.layer.getTileAtWorldXY(px, py);
+    return !!tile && !tile.collides;
+  }
+
   // ── враги: спавн и респавн (правило алтаря) ──
   private spawnEnemies(): void {
     this.enemies.clear(true, true);
     this.boss = null;
     for (const s of this.zone.spawns) {
-      if (ENEMIES[s.type]) {
+      if (s.type === 'spirit') {
+        this.enemies.add(new SpiritEnemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES.spirit));
+      } else if (ENEMIES[s.type]) {
         this.enemies.add(new Enemy(this, s.x * 16 + 8, s.y * 16 + 8, ENEMIES[s.type]));
       } else if (s.type === 'boss' && !(this.registry.get('bossDefeated') as boolean)) {
         this.boss = new MiniBoss(this, s.x * 16 + 8, s.y * 16 + 8);
@@ -466,35 +516,78 @@ export class GameScene extends Phaser.Scene {
     persist(this.save);
   }
 
-  // ── NPC ──
+  // ── NPC: квесты + ремесло ──
+  private craftChoice(npc: Npc): { label: string; cb: () => void }[] {
+    if (npc.kind === 'blacksmith') return [{ label: 'ковать', cb: () => this.openCraft('blacksmith') }];
+    if (npc.kind === 'merchant') return [{ label: 'торговать', cb: () => this.openCraft('merchant') }];
+    return [];
+  }
+
   private talkTo(npc: Npc): void {
-    if (npc.kind === 'blacksmith') {
+    const pending = pendingQuest(this.save, npc.kind);
+
+    // 1. сдать выполненный квест
+    if (pending && isQuestDone(this.save, pending)) {
+      turnInQuest(this.save, pending);
+      const souls = ((this.registry.get('souls') as number) ?? 0) + (pending.rewards.souls ?? 0);
+      this.registry.set('souls', souls);
+      this.persistNow();
+      const rewardBits = [
+        pending.rewards.souls ? `+${pending.rewards.souls} костей` : '',
+        ...(pending.rewards.items ?? []).map((i) => `+${i.qty > 1 ? `${i.qty} ` : ''}предмет`),
+      ].filter(Boolean);
       this.dialog.open({
         name: npc.nameRu,
-        pages: ['металл здесь гниёт, как всё живое.\nно я ещё держу молот.'],
-        choices: [
-          { label: 'ковать', cb: () => this.openCraft('blacksmith') },
-          { label: 'уйти', cb: () => undefined },
-        ],
+        pages: [...pending.dialog.complete, `награда: ${rewardBits.join(', ') || 'благодарность'}`],
+        choices: [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }],
       });
-    } else if (npc.kind === 'merchant') {
-      this.dialog.open({
-        name: npc.nameRu,
-        pages: ['кости — единственная валюта,\nкоторой я верю, котик.'],
-        choices: [
-          { label: 'торговать', cb: () => this.openCraft('merchant') },
-          { label: 'уйти', cb: () => undefined },
-        ],
-      });
-    } else {
-      this.dialog.open({
-        name: npc.nameRu,
-        pages: [
-          'город держится, пока горят фонари.\nкрысы лезут из всех щелей.',
-          'зачисти переулки, если лапы чешутся.\nработа для когтей всегда найдётся.',
-        ],
-      });
+      return;
     }
+
+    // 2. квест в процессе
+    if (pending) {
+      this.dialog.open({
+        name: npc.nameRu,
+        pages: pending.dialog.active,
+        choices: [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }],
+      });
+      return;
+    }
+
+    // 3. предложить новый квест
+    const offer = availableQuest(this.save, npc.kind);
+    if (offer) {
+      this.dialog.open({
+        name: npc.nameRu,
+        pages: offer.dialog.offer,
+        choices: [
+          { label: 'принять', cb: () => this.acceptQuestFlow(offer) },
+          { label: 'отказаться', cb: () => undefined },
+          ...this.craftChoice(npc),
+        ],
+      });
+      return;
+    }
+
+    // 4. обычная болтовня
+    const chatter: Record<string, string[]> = {
+      blacksmith: ['металл здесь гниёт, как всё живое.\nно я ещё держу молот.'],
+      merchant: ['кости — единственная валюта,\nкоторой я верю, котик.'],
+      quartermaster: ['город держится, пока горят фонари.\nне дай им погаснуть.'],
+    };
+    this.dialog.open({
+      name: npc.nameRu,
+      pages: chatter[npc.kind],
+      choices: this.craftChoice(npc).length
+        ? [...this.craftChoice(npc), { label: 'уйти', cb: () => undefined }]
+        : undefined,
+    });
+  }
+
+  private acceptQuestFlow(quest: QuestDef): void {
+    acceptQuest(this.save, quest);
+    this.persistNow();
+    this.showBanner(`новый квест: ${quest.nameRu}`, UI.gold);
   }
 
   private openCraft(vendor: 'blacksmith' | 'merchant'): void {
@@ -620,6 +713,14 @@ export class GameScene extends Phaser.Scene {
       this.player.x < 40 * 16
     ) {
       this.boss.activate();
+    }
+
+    // маркеры квестов над NPC
+    for (const npc of this.npcs) {
+      const pending = pendingQuest(this.save, npc.kind);
+      if (pending && isQuestDone(this.save, pending)) npc.setMarker('done');
+      else if (!pending && availableQuest(this.save, npc.kind)) npc.setMarker('quest');
+      else npc.setMarker(null);
     }
 
     // взаимодействия по E: алтарь или NPC
