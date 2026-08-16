@@ -62,6 +62,14 @@ export const CAT_FRAMES = {
   death: [17, 18],
 } as const;
 
+// ─── Кадры спрайтшита врагов (enemies.png, один ряд) ─────────────────────
+export const ENEMY_FRAMES = {
+  gravehound: { idle: [0, 1], walk: [2, 3], windup: [4, 5], attack: [6, 7], death: [8, 9] },
+  acolyte: { idle: [10, 11], walk: [12, 13], windup: [14, 15], attack: [16], death: [17, 18] },
+  fish: [19, 20],
+  bolt: [21, 22],
+} as const;
+
 // ─── Тайлы (индексы в tiles.png) ─────────────────────────────────────────
 export const TILES = {
   grassA: 0,

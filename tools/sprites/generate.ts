@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { Matrix, overlay, recolor, writeSheet } from './lib';
 import { catBodyFrames, weaponOverlays, classRecolors, FRAMES_PER_CLASS } from './defs/cats';
 import { tileFrames } from './defs/tiles';
+import { enemyFrames } from './defs/enemies';
 
 const OUT = join(import.meta.dirname, '..', '..', 'public', 'assets');
 
@@ -22,5 +23,8 @@ writeSheet(join(OUT, 'cats.png'), catFrames, 16, 16, FRAMES_PER_CLASS);
 
 // ── tiles.png: один ряд ───────────────────────────────────────────────────
 writeSheet(join(OUT, 'tiles.png'), tileFrames, 16, 16);
+
+// ── enemies.png: один ряд (гончая, аколит, снаряды) ───────────────────────
+writeSheet(join(OUT, 'enemies.png'), enemyFrames, 16, 16);
 
 console.log('Done.');
